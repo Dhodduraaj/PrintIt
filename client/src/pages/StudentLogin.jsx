@@ -5,6 +5,24 @@ import FloatingLines from "../components/FloatingLines";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 
+// Regex patterns for validation
+const REGEX_PATTERNS = {
+  name: /^[a-zA-Z\s]{2,50}$/, // Letters and spaces, 2-50 chars
+  studentId: /^[a-zA-Z0-9]{3,20}$/, // Alphanumeric, 3-20 chars
+  email: /^[^\s@]+@kongu\.edu$/, // Must be @kongu.edu for students
+  mobileNumber: /^\+91[0-9]{10}$/, // +91 followed by exactly 10 digits
+  password: /^(?=.*[a-zA-Z])(?=.*[0-9])(?=.{6,})/, // At least 1 letter, 1 number, 6+ chars
+};
+
+// Validation messages
+const VALIDATION_MESSAGES = {
+  name: "Name must be 2-50 characters (letters and spaces only)",
+  studentId: "Student ID must be 3-20 characters (letters and numbers only)",
+  email: "Must use your Kongu email address (@kongu.edu)",
+  mobileNumber: "Mobile number must be +91 followed by 10 digits (e.g., +919876543210)",
+  password: "Password must be at least 6 characters with letters and numbers",
+};
+
 const StudentLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isVendor, setIsVendor] = useState(false);
@@ -16,6 +34,13 @@ const StudentLogin = () => {
     password: "",
   });
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({
+    name: "",
+    studentId: "",
+    email: "",
+    mobileNumber: "",
+    password: "",
+  });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -26,14 +51,99 @@ const StudentLogin = () => {
     setMounted(true);
   }, []);
 
+  // Validate individual field
+  const validateField = (fieldName, value, isVendor = false) => {
+    if (!isLogin && !isVendor) {
+      // Signup validation
+      switch (fieldName) {
+        case "name":
+          return !REGEX_PATTERNS.name.test(value) ? VALIDATION_MESSAGES.name : "";
+        case "studentId":
+          return !REGEX_PATTERNS.studentId.test(value) ? VALIDATION_MESSAGES.studentId : "";
+        case "email":
+          return !REGEX_PATTERNS.email.test(value) ? VALIDATION_MESSAGES.email : "";
+        case "mobileNumber":
+          // Remove spaces for validation
+          const mobileNoSpaces = value.replace(/\s/g, "");
+          return !REGEX_PATTERNS.mobileNumber.test(mobileNoSpaces) ? VALIDATION_MESSAGES.mobileNumber : "";
+        case "password":
+          return !REGEX_PATTERNS.password.test(value) ? VALIDATION_MESSAGES.password : "";
+        default:
+          return "";
+      }
+    }
+    
+    if (isLogin && !isVendor) {
+      // Student login validation
+      switch (fieldName) {
+        case "email":
+          return !REGEX_PATTERNS.email.test(value) ? VALIDATION_MESSAGES.email : "";
+        case "password":
+          return value.length < 6 ? "Password must be at least 6 characters" : "";
+        default:
+          return "";
+      }
+    }
+    
+    return "";
+  };
+
+  // Validate all fields for signup
+  const validateAllFields = () => {
+    const errors = {};
+    
+    if (!isVendor && !isLogin) {
+      errors.name = validateField("name", formData.name);
+      errors.studentId = validateField("studentId", formData.studentId);
+      errors.email = validateField("email", formData.email);
+      errors.mobileNumber = validateField("mobileNumber", formData.mobileNumber);
+      errors.password = validateField("password", formData.password);
+      
+      return Object.values(errors).some(err => err !== "");
+    }
+    
+    if (isLogin && !isVendor) {
+      errors.email = validateField("email", formData.email);
+      errors.password = validateField("password", formData.password);
+      
+      return Object.values(errors).some(err => err !== "");
+    }
+    
+    return false;
+  };
+
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
     setError("");
+    
+    // Real-time validation only during signup
+    if (!isLogin && !isVendor) {
+      const error = validateField(name, value, isVendor);
+      setFieldErrors({ ...fieldErrors, [name]: error });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    
+    // Validate all fields before submission
+    if (validateAllFields()) {
+      const errorMsg = "Please fix the validation errors above";
+      setError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+    
+    // Additional validation for email domain for students
+    if (!isVendor && !formData.email.toLowerCase().endsWith("@kongu.edu")) {
+      const errorMsg = "Please use your Kongu email address (@kongu.edu)";
+      setError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -152,7 +262,7 @@ const StudentLogin = () => {
               <div className="space-y-4 animate-fadeIn">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    Full Name
+                    Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -161,13 +271,18 @@ const StudentLogin = () => {
                     onChange={handleChange}
                     required
                     placeholder="Enter your full name"
-                    className="w-full px-3 py-2.5 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400"
+                    className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400 ${
+                      fieldErrors.name ? "border-red-500" : "border-purple-300"
+                    }`}
                   />
+                  {fieldErrors.name && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.name}</p>
+                  )}
                 </div>
                 {!isVendor && (
                   <div className="animate-fadeIn">
                     <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                      Student ID
+                      Student ID <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -176,8 +291,13 @@ const StudentLogin = () => {
                       onChange={handleChange}
                       required
                       placeholder="Enter your student ID"
-                      className="w-full px-3 py-2.5 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400"
+                      className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400 ${
+                        fieldErrors.studentId ? "border-red-500" : "border-purple-300"
+                      }`}
                     />
+                    {fieldErrors.studentId && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.studentId}</p>
+                    )}
                   </div>
                 )}
                 <div>
@@ -190,18 +310,23 @@ const StudentLogin = () => {
                     value={formData.mobileNumber}
                     onChange={handleChange}
                     required
-                    placeholder="Enter your mobile number (e.g., +91 9876543210)"
-                    className="w-full px-3 py-2.5 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400"
+                    placeholder="+91 9876543210"
+                    className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400 ${
+                      fieldErrors.mobileNumber ? "border-red-500" : "border-purple-300"
+                    }`}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Include country code (e.g., +91 for India)
+                    Include +91 country code (10 digits after +91)
                   </p>
+                  {fieldErrors.mobileNumber && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.mobileNumber}</p>
+                  )}
                 </div>
               </div>
             )}
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Email
+                Email <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
@@ -209,13 +334,23 @@ const StudentLogin = () => {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                placeholder="Enter your email"
-                className="w-full px-3 py-2.5 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400"
+                placeholder={isVendor ? "Enter your email" : "Enter your Kongu email (@kongu.edu)"}
+                className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400 ${
+                  fieldErrors.email ? "border-red-500" : "border-purple-300"
+                }`}
               />
+              {!isVendor && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Use your official Kongu email address
+                </p>
+              )}
+              {fieldErrors.email && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Password
+                Password <span className="text-red-500">*</span>
               </label>
               <input
                 type="password"
@@ -225,8 +360,18 @@ const StudentLogin = () => {
                 required
                 placeholder="Enter your password"
                 minLength={6}
-                className="w-full px-3 py-2.5 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400"
+                className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400 ${
+                  fieldErrors.password ? "border-red-500" : "border-purple-300"
+                }`}
               />
+              {!isVendor && !isLogin && (
+                <p className="text-xs text-gray-500 mt-1">
+                  At least 6 characters with letters and numbers
+                </p>
+              )}
+              {fieldErrors.password && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+              )}
             </div>
             <button
               type="submit"
