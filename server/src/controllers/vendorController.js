@@ -119,6 +119,26 @@ exports.completeJob = async (req, res) => {
       console.warn(`⚠️ No mobile number found for student ${populatedJob.student?._id}. SMS not sent.`);
     }
 
+    // Populate student info for SMS and socket events
+    const populatedJob = await PrintJob.findById(job._id).populate(
+      "student",
+      "name email mobileNumber",
+    );
+
+    // Send SMS notification to student (non-blocking)
+    if (populatedJob.student?.mobileNumber) {
+      sendPickupNotification({
+        to: populatedJob.student.mobileNumber,
+        studentName: populatedJob.student.name,
+        job: populatedJob,
+      }).catch((err) => {
+        // Log but don't fail the request if SMS fails
+        console.error("Failed to send pickup SMS:", err);
+      });
+    } else {
+      console.warn(`⚠️ No mobile number found for student ${populatedJob.student?._id}. SMS not sent.`);
+    }
+
     // Emit update and recalculate queue positions
     const io = req.app.get("io");
     if (io) {
@@ -132,24 +152,7 @@ exports.completeJob = async (req, res) => {
         status: "done",
       });
 
-      // Recalculate and emit queue positions for all remaining waiting/printing jobs
-      const queueJobs = await PrintJob.find({
-        status: { $in: ["waiting", "printing"] },
-      }).sort({ createdAt: 1 });
-
-      queueJobs.forEach((queueJob, index) => {
-        io.emit("queueUpdate", {
-          jobId: queueJob._id.toString(),
-          queuePosition: index + 1,
-        });
-        io.emit("queue:update", {
-          jobId: queueJob._id.toString(),
-          queuePosition: index + 1,
-        });
-      });
-    }
-
-    res.json({ message: "Job marked as completed", job: populatedJob });
+    res.json({ message: "Job marked as completed", job });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
