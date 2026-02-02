@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
@@ -61,6 +61,8 @@ const QueueStatus = () => {
       if (response.data.job) {
         setJob(response.data.job);
         setQueuePosition(response.data.queuePosition);
+      } else {
+        toast("No active jobs found.", { icon: "ℹ️" });
       }
     } catch (err) {
       console.error("Error fetching job:", err);

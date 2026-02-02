@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRef, useState } from "react";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
@@ -30,10 +30,12 @@ const StudentDashboard = () => {
         !file.name.endsWith(".docx")
       ) {
         setError("Please upload PDF or DOC files only");
+        toast.error("Please upload PDF or DOC files only");
         return;
       }
       setFormData({ ...formData, file, fileName: file.name });
       setError("");
+      toast.success("File selected successfully.");
     }
   };
 
@@ -57,10 +59,12 @@ const StudentDashboard = () => {
         !file.name.endsWith(".docx")
       ) {
         setError("Please upload PDF or DOC files only");
+        toast.error("Please upload PDF or DOC files only");
         return;
       }
       setFormData({ ...formData, file, fileName: file.name });
       setError("");
+      toast.success("File ready to upload.");
     }
   };
 
@@ -68,6 +72,7 @@ const StudentDashboard = () => {
     e.preventDefault();
     if (!formData.file) {
       setError("Please select a file");
+      toast.error("Please select a file");
       return;
     }
 
@@ -163,6 +168,7 @@ const StudentDashboard = () => {
                             file: null,
                             fileName: "",
                           });
+                          toast.success("File removed.");
                         }}
                         className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg p-2 transition-colors"
                       >

@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
 
@@ -17,6 +18,7 @@ const Admin = () => {
       setStats(response.data);
     } catch (err) {
       console.error("Error fetching analytics:", err);
+      toast.error(err.response?.data?.message || "Failed to load analytics");
     } finally {
       setLoading(false);
     }

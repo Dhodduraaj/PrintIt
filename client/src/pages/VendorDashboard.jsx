@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import api from '../utils/api';
@@ -19,16 +20,19 @@ const VendorDashboard = () => {
 
     socket.on("newJob", (job) => {
       setJobs((prev) => [...prev, job]);
+      toast.success(`New job received: Token #${job.tokenNumber}`);
     });
 
     socket.on("jobUpdated", (updatedJob) => {
       setJobs((prev) =>
         prev.map((j) => (j._id === updatedJob._id ? updatedJob : j)),
       );
+      toast(`Job updated: Token #${updatedJob.tokenNumber}`, { icon: "🔄" });
     });
 
     socket.on("jobDeleted", ({ jobId }) => {
       setJobs((prev) => prev.filter((j) => j._id !== jobId));
+      toast("Job removed from queue.", { icon: "🗑️" });
     });
 
     return () => {
@@ -44,6 +48,7 @@ const VendorDashboard = () => {
       setJobs(response.data.jobs);
     } catch (err) {
       console.error("Error fetching jobs:", err);
+      toast.error(err.response?.data?.message || 'Failed to fetch jobs');
     } finally {
       setLoading(false);
     }
@@ -52,18 +57,20 @@ const VendorDashboard = () => {
   const handleApprove = async (jobId) => {
     try {
       await api.post(`/api/vendor/jobs/${jobId}/approve`);
+      toast.success('Job approved. Printing started.');
       fetchJobs();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to approve job");
+      toast.error(err.response?.data?.message || 'Failed to approve job');
     }
   };
 
   const handleMarkDone = async (jobId) => {
     try {
       await api.post(`/api/vendor/jobs/${jobId}/complete`);
+      toast.success('Job marked as done.');
       fetchJobs();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to mark as done');
+      toast.error(err.response?.data?.message || 'Failed to mark as done');
     }
   };
 
@@ -76,8 +83,9 @@ const VendorDashboard = () => {
     try {
       await api.delete(`/api/vendor/jobs/${jobId}`);
       setJobs((prev) => prev.filter((j) => j._id !== jobId));
+      toast.success('Job deleted successfully.');
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete job");
+      toast.error(err.response?.data?.message || 'Failed to delete job');
     }
   };
 
@@ -96,6 +104,7 @@ const VendorDashboard = () => {
       link.click();
       document.body.removeChild(link);
       setTimeout(() => window.URL.revokeObjectURL(url), 100);
+      toast.success('Download started.');
     } catch (err) {
       let message = 'Failed to download file';
       if (err.response?.data instanceof Blob) {
@@ -107,7 +116,7 @@ const VendorDashboard = () => {
       } else if (typeof err.response?.data?.message === 'string') {
         message = err.response.data.message;
       }
-      alert(message);
+      toast.error(message);
     }
   };
 
