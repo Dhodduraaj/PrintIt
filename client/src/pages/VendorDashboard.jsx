@@ -27,9 +27,14 @@ const VendorDashboard = () => {
       );
     });
 
+    socket.on("jobDeleted", ({ jobId }) => {
+      setJobs((prev) => prev.filter((j) => j._id !== jobId));
+    });
+
     return () => {
       socket.off("newJob");
       socket.off("jobUpdated");
+      socket.off("jobDeleted");
     };
   }, [socket]);
 
@@ -59,6 +64,20 @@ const VendorDashboard = () => {
       fetchJobs();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to mark as done');
+    }
+  };
+
+  const handleDelete = async (jobId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this job and its document? This action cannot be undone."
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/api/vendor/jobs/${jobId}`);
+      setJobs((prev) => prev.filter((j) => j._id !== jobId));
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete job");
     }
   };
 
@@ -260,6 +279,13 @@ const VendorDashboard = () => {
                       className="text-center px-6 py-2 bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transition-all"
                     >
                       📥 Download
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(job._id)}
+                      className="text-center px-6 py-2 bg-red-600 text-white hover:bg-red-700 font-semibold rounded-lg transition-all"
+                    >
+                      🗑 Delete
                     </button>
                   </div>
                 </div>

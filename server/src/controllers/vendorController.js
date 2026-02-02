@@ -1,7 +1,7 @@
 const PrintJob = require("../models/PrintJob");
 const path = require("path");
 const fs = require("fs");
-const { downloadFromGridFS } = require("../services/fileStorage");
+const { downloadFromGridFS, getBucket } = require("../services/fileStorage");
 
 exports.getJobs = async (req, res) => {
   try {
@@ -116,6 +116,57 @@ exports.downloadFile = async (req, res) => {
     }
 
     return res.status(404).json({ message: "File not found" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteJob = async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const job = await PrintJob.findById(jobId);
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    // Attempt to delete file from GridFS if present
+    if (job.gridFsFileId) {
+      try {
+        const bucket = getBucket();
+        await new Promise((resolve, reject) => {
+          bucket.delete(job.gridFsFileId, (err) => {
+            if (err) return reject(err);
+            resolve();
+          });
+        });
+      } catch (err) {
+        // Log but don't block job deletion if file removal fails
+        console.error("Error deleting GridFS file:", err.message || err);
+      }
+    }
+
+    // Attempt to delete legacy file from local /uploads if present
+    if (job.filePath) {
+      const filePath = path.join(__dirname, "../../", job.filePath);
+      if (fs.existsSync(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+        } catch (err) {
+          console.error("Error deleting local file:", err.message || err);
+        }
+      }
+    }
+
+    await job.deleteOne();
+
+    // Notify connected clients that a job was deleted
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("jobDeleted", { jobId });
+    }
+
+    res.json({ message: "Job deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
