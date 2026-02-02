@@ -7,7 +7,10 @@ const {
   setServiceStatus,
 } = require("../services/serviceStatus");
 const { sendPickupNotification } = require("../services/smsService");
+<<<<<<< Updated upstream
 const { sendPickupNotification } = require("../services/smsService");
+=======
+>>>>>>> Stashed changes
 
 exports.getJobs = async (req, res) => {
   try {
@@ -120,6 +123,7 @@ exports.completeJob = async (req, res) => {
       console.warn(`⚠️ No mobile number found for student ${populatedJob.student?._id}. SMS not sent.`);
     }
 
+<<<<<<< Updated upstream
     // Populate student info for SMS and socket events
     const populatedJob = await PrintJob.findById(job._id).populate(
       "student",
@@ -165,6 +169,12 @@ exports.completeJob = async (req, res) => {
     if (io) {
       io.emit("jobUpdated", populatedJob);
       io.emit("jobUpdated", populatedJob);
+=======
+    // Emit update
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("jobUpdated", populatedJob);
+>>>>>>> Stashed changes
       io.emit("jobStatusUpdate", {
         jobId: job._id,
         status: "done",
@@ -175,7 +185,10 @@ exports.completeJob = async (req, res) => {
       });
 
     res.json({ message: "Job marked as completed", job: populatedJob });
+<<<<<<< Updated upstream
     res.json({ message: "Job marked as completed", job: populatedJob });
+=======
+>>>>>>> Stashed changes
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
