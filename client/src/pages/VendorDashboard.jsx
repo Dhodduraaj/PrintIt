@@ -89,6 +89,26 @@ const VendorDashboard = () => {
     }
   };
 
+  const handleDeleteDoneHistory = async () => {
+    const doneCount = jobs.filter((j) => j.status === "done").length;
+    if (doneCount === 0) {
+      toast("No completed jobs to delete.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Are you sure you want to delete all ${doneCount} completed job(s)? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.delete("/api/vendor/jobs/done-history");
+      setJobs((prev) => prev.filter((j) => j.status !== "done"));
+      toast.success("Done history deleted.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete done history");
+    }
+  };
+
   const handleDownload = async (job) => {
     try {
       const response = await api.get(
@@ -196,7 +216,7 @@ const VendorDashboard = () => {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-6 overflow-x-auto pb-2">
           <button
             className={`px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap ${filter === "all" ? "bg-purple-600 text-white shadow-lg" : "bg-white text-purple-600 hover:bg-purple-50"}`}
             onClick={() => setFilter("all")}
@@ -215,6 +235,15 @@ const VendorDashboard = () => {
           >
             Printing
           </button>
+          {filter === "all" && (
+            <button
+              type="button"
+              onClick={handleDeleteDoneHistory}
+              className="px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap bg-red-600 text-white hover:bg-red-700 shadow-lg"
+            >
+              Delete Done History
+            </button>
+          )}
         </div>
 
         <div className="space-y-4">
@@ -248,7 +277,7 @@ const VendorDashboard = () => {
                         {getStatusText(job.status)}
                       </span>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-3 text-gray-700">
+                    <div className="grid md:grid-cols-2 gap-2 text-sm text-gray-700">
                       <p>
                         <strong className="text-purple-900">Student:</strong>{" "}
                         {job.student?.name || "N/A"}
@@ -258,12 +287,36 @@ const VendorDashboard = () => {
                         {job.fileName}
                       </p>
                       <p>
+                        <strong className="text-purple-900">Page Range:</strong>{" "}
+                        {job.pageRange || "All pages"}
+                      </p>
+                      <p>
                         <strong className="text-purple-900">Pages:</strong>{" "}
                         {job.pageCount} × {job.copies} copies
                       </p>
                       <p>
-                        <strong className="text-purple-900">Type:</strong>{" "}
+                        <strong className="text-purple-900">Print Type:</strong>{" "}
                         {job.printType === "color" ? "Color" : "Black & White"}
+                      </p>
+                      <p>
+                        <strong className="text-purple-900">Sides:</strong>{" "}
+                        {job.duplex === "single-sided" ? "Single Sided" : 
+                         job.duplex === "double-sided" ? "Double Sided" :
+                         job.duplex === "double-sided-flip-long" ? "Double Sided (Flip Long)" :
+                         job.duplex === "double-sided-flip-short" ? "Double Sided (Flip Short)" :
+                         "Single Sided"}
+                      </p>
+                      <p>
+                        <strong className="text-purple-900">Paper Size:</strong>{" "}
+                        {job.paperSize || "A4"}
+                      </p>
+                      <p>
+                        <strong className="text-purple-900">Orientation:</strong>{" "}
+                        {job.orientation === "portrait" ? "Portrait" : "Landscape"}
+                      </p>
+                      <p>
+                        <strong className="text-purple-900">Pages Per Sheet:</strong>{" "}
+                        {job.pagesPerSheet || 1} Page{job.pagesPerSheet > 1 ? "s" : ""}
                       </p>
                       {job.upiReferenceId && (
                         <p className="col-span-2">

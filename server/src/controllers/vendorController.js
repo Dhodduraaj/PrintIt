@@ -190,6 +190,48 @@ exports.deleteJob = async (req, res) => {
   }
 };
 
+exports.deleteDoneHistory = async (req, res) => {
+  try {
+    const doneJobs = await PrintJob.find({ status: "done" });
+    const io = req.app.get("io");
+    const jobIds = [];
+
+    for (const job of doneJobs) {
+      if (job.gridFsFileId) {
+        try {
+          const bucket = getBucket();
+          await bucket.delete(job.gridFsFileId);
+        } catch (err) {
+          console.error("Error deleting GridFS file:", err.message || err);
+        }
+      }
+      if (job.filePath) {
+        const filePath = path.join(__dirname, "../../", job.filePath);
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (err) {
+            console.error("Error deleting local file:", err.message || err);
+          }
+        }
+      }
+      await job.deleteOne();
+      jobIds.push(job._id.toString());
+      if (io) {
+        io.emit("jobDeleted", { jobId: job._id });
+      }
+    }
+
+    res.json({
+      message: "Done history deleted successfully",
+      deleted: jobIds.length,
+      jobIds,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getServiceStatus = (req, res) => {
   res.json({ isOpen: getServiceStatus() });
 };
