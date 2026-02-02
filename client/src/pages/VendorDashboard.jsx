@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
-import { useAuth } from '../contexts/AuthContext';
-import { useSocket } from '../contexts/SocketContext';
-import api from '../utils/api';
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { useAuth } from "../contexts/AuthContext";
+import { useSocket } from "../contexts/SocketContext";
+import api from "../utils/api";
 
 const VendorDashboard = () => {
   const { user } = useAuth();
@@ -48,7 +48,7 @@ const VendorDashboard = () => {
       setJobs(response.data.jobs);
     } catch (err) {
       console.error("Error fetching jobs:", err);
-      toast.error(err.response?.data?.message || 'Failed to fetch jobs');
+      toast.error(err.response?.data?.message || "Failed to fetch jobs");
     } finally {
       setLoading(false);
     }
@@ -57,35 +57,35 @@ const VendorDashboard = () => {
   const handleApprove = async (jobId) => {
     try {
       await api.post(`/api/vendor/jobs/${jobId}/approve`);
-      toast.success('Job approved. Printing started.');
+      toast.success("Job approved. Printing started.");
       fetchJobs();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to approve job');
+      toast.error(err.response?.data?.message || "Failed to approve job");
     }
   };
 
   const handleMarkDone = async (jobId) => {
     try {
       await api.post(`/api/vendor/jobs/${jobId}/complete`);
-      toast.success('Job marked as done.');
+      toast.success("Job marked as done.");
       fetchJobs();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to mark as done');
+      toast.error(err.response?.data?.message || "Failed to mark as done");
     }
   };
 
   const handleDelete = async (jobId) => {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this job and its document? This action cannot be undone."
+      "Are you sure you want to delete this job and its document? This action cannot be undone.",
     );
     if (!confirmed) return;
 
     try {
       await api.delete(`/api/vendor/jobs/${jobId}`);
       setJobs((prev) => prev.filter((j) => j._id !== jobId));
-      toast.success('Job deleted successfully.');
+      toast.success("Job deleted successfully.");
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to delete job');
+      toast.error(err.response?.data?.message || "Failed to delete job");
     }
   };
 
@@ -111,29 +111,31 @@ const VendorDashboard = () => {
 
   const handleDownload = async (job) => {
     try {
-      const response = await api.get(
-        `/api/vendor/jobs/${job._id}/download`,
-        { responseType: 'blob' }
-      );
-      const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+      const response = await api.get(`/api/vendor/jobs/${job._id}/download`, {
+        responseType: "blob",
+      });
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = job.fileName || 'document';
+      link.download = job.fileName || "document";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       setTimeout(() => window.URL.revokeObjectURL(url), 100);
-      toast.success('Download started.');
+      toast.success("Download started.");
     } catch (err) {
-      let message = 'Failed to download file';
+      let message = "Failed to download file";
       if (err.response?.data instanceof Blob) {
         try {
           const text = await err.response.data.text();
           const json = JSON.parse(text);
           if (json.message) message = json.message;
         } catch (_) {}
-      } else if (typeof err.response?.data?.message === 'string') {
+      } else if (typeof err.response?.data?.message === "string") {
         message = err.response.data.message;
       }
       toast.error(message);
@@ -300,23 +302,34 @@ const VendorDashboard = () => {
                       </p>
                       <p>
                         <strong className="text-purple-900">Sides:</strong>{" "}
-                        {job.duplex === "single-sided" ? "Single Sided" : 
-                         job.duplex === "double-sided" ? "Double Sided" :
-                         job.duplex === "double-sided-flip-long" ? "Double Sided (Flip Long)" :
-                         job.duplex === "double-sided-flip-short" ? "Double Sided (Flip Short)" :
-                         "Single Sided"}
+                        {job.duplex === "single-sided"
+                          ? "Single Sided"
+                          : job.duplex === "double-sided"
+                            ? "Double Sided"
+                            : job.duplex === "double-sided-flip-long"
+                              ? "Double Sided (Flip Long)"
+                              : job.duplex === "double-sided-flip-short"
+                                ? "Double Sided (Flip Short)"
+                                : "Single Sided"}
                       </p>
                       <p>
                         <strong className="text-purple-900">Paper Size:</strong>{" "}
                         {job.paperSize || "A4"}
                       </p>
                       <p>
-                        <strong className="text-purple-900">Orientation:</strong>{" "}
-                        {job.orientation === "portrait" ? "Portrait" : "Landscape"}
+                        <strong className="text-purple-900">
+                          Orientation:
+                        </strong>{" "}
+                        {job.orientation === "portrait"
+                          ? "Portrait"
+                          : "Landscape"}
                       </p>
                       <p>
-                        <strong className="text-purple-900">Pages Per Sheet:</strong>{" "}
-                        {job.pagesPerSheet || 1} Page{job.pagesPerSheet > 1 ? "s" : ""}
+                        <strong className="text-purple-900">
+                          Pages Per Sheet:
+                        </strong>{" "}
+                        {job.pagesPerSheet || 1} Page
+                        {job.pagesPerSheet > 1 ? "s" : ""}
                       </p>
                       {job.upiReferenceId && (
                         <p className="col-span-2">
