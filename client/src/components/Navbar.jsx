@@ -15,11 +15,17 @@ const Navbar = () => {
   useEffect(() => {
     const fetchVendorStatus = async () => {
       if (!user || user.role !== 'vendor') return;
+      
+      // Add a small delay to ensure token is available
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
       try {
         const res = await api.get('/api/vendor/service/status');
         setServiceOpen(res.data.isOpen);
       } catch (err) {
-        console.error('Failed to fetch service status', err);
+        // Don't show error to user for this background check
+        console.debug('Vendor service status check failed:', err.response?.status);
       }
     };
 
@@ -29,11 +35,17 @@ const Navbar = () => {
   useEffect(() => {
     const fetchStudentStatus = async () => {
       if (!user || user.role !== 'student') return;
+      
+      // Add a small delay to ensure token is available
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
       try {
         const res = await api.get('/api/student/service-status');
         setStudentServiceOpen(res.data.isOpen);
       } catch (err) {
-        console.error('Failed to fetch student service status', err);
+        // Don't show error to user for this background check
+        console.debug('Service status check failed:', err.response?.status);
       }
     };
 
