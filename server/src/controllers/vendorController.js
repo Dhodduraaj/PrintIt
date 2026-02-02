@@ -6,7 +6,7 @@ const { downloadFromGridFS, getBucket } = require("../services/fileStorage");
 exports.getJobs = async (req, res) => {
   try {
     const jobs = await PrintJob.find()
-      .sort({ createdAt: -1 })
+      .sort({ createdAt: 1 })
       .populate("student", "name email studentId");
 
     res.json({ jobs });

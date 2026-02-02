@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import api from '../utils/api';
@@ -18,7 +18,7 @@ const VendorDashboard = () => {
     if (!socket) return;
 
     socket.on("newJob", (job) => {
-      setJobs((prev) => [job, ...prev]);
+      setJobs((prev) => [...prev, job]);
     });
 
     socket.on("jobUpdated", (updatedJob) => {
@@ -111,7 +111,17 @@ const VendorDashboard = () => {
     }
   };
 
-  const filteredJobs = jobs.filter((job) => {
+  const sortedJobs = [...jobs].sort((a, b) => {
+    const aDone = a.status === "done";
+    const bDone = b.status === "done";
+    if (aDone !== bDone) return aDone ? 1 : -1;
+
+    const aTime = new Date(a.createdAt).getTime();
+    const bTime = new Date(b.createdAt).getTime();
+    return aTime - bTime;
+  });
+
+  const filteredJobs = sortedJobs.filter((job) => {
     if (filter === "all") return true;
     return job.status === filter;
   });
