@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
-import './Admin.css';
 
 const Admin = () => {
   const { user } = useAuth();
@@ -29,107 +28,109 @@ const Admin = () => {
 
   if (loading) {
     return (
-      <div className="admin-page">
-        <div className="container">
-          <div className="loading">Loading analytics...</div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-xl text-purple-900 font-semibold">Loading analytics...</div>
       </div>
     );
   }
 
   return (
-    <div className="admin-page">
-      <div className="container">
-        <div className="admin-header">
-          <h1>📊 Admin Analytics</h1>
-          <p>System performance and usage statistics</p>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-purple-900 mb-2">📊 Admin Analytics</h1>
+          <p className="text-lg text-purple-700">System performance and usage statistics</p>
         </div>
 
-        <div className="analytics-grid">
-          <div className="stat-card">
-            <div className="stat-icon">📄</div>
-            <div className="stat-value">{stats?.totalJobs || 0}</div>
-            <div className="stat-label">Total Jobs</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-12">
+          <div className="bg-white rounded-2xl shadow-xl p-6 text-center border-t-4 border-purple-500 hover:shadow-2xl transition-shadow">
+            <div className="text-5xl mb-4">📄</div>
+            <div className="text-3xl font-bold text-purple-900 mb-2">{stats?.totalJobs || 0}</div>
+            <div className="text-gray-600 font-medium">Total Jobs</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon">⏱️</div>
-            <div className="stat-value">{stats?.avgWaitTime || 0} min</div>
-            <div className="stat-label">Avg Wait Time</div>
+          <div className="bg-white rounded-2xl shadow-xl p-6 text-center border-t-4 border-blue-500 hover:shadow-2xl transition-shadow">
+            <div className="text-5xl mb-4">⏱️</div>
+            <div className="text-3xl font-bold text-purple-900 mb-2">{stats?.avgWaitTime || 0} min</div>
+            <div className="text-gray-600 font-medium">Avg Wait Time</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon">👥</div>
-            <div className="stat-value">{stats?.activeUsers || 0}</div>
-            <div className="stat-label">Active Users</div>
+          <div className="bg-white rounded-2xl shadow-xl p-6 text-center border-t-4 border-green-500 hover:shadow-2xl transition-shadow">
+            <div className="text-5xl mb-4">👥</div>
+            <div className="text-3xl font-bold text-purple-900 mb-2">{stats?.activeUsers || 0}</div>
+            <div className="text-gray-600 font-medium">Active Users</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon">✅</div>
-            <div className="stat-value">{stats?.completedToday || 0}</div>
-            <div className="stat-label">Completed Today</div>
+          <div className="bg-white rounded-2xl shadow-xl p-6 text-center border-t-4 border-yellow-500 hover:shadow-2xl transition-shadow">
+            <div className="text-5xl mb-4">✅</div>
+            <div className="text-3xl font-bold text-purple-900 mb-2">{stats?.completedToday || 0}</div>
+            <div className="text-gray-600 font-medium">Completed Today</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon">📈</div>
-            <div className="stat-value">{stats?.peakHourJobs || 0}</div>
-            <div className="stat-label">Peak Hour Jobs</div>
+          <div className="bg-white rounded-2xl shadow-xl p-6 text-center border-t-4 border-indigo-500 hover:shadow-2xl transition-shadow">
+            <div className="text-5xl mb-4">📈</div>
+            <div className="text-3xl font-bold text-purple-900 mb-2">{stats?.peakHourJobs || 0}</div>
+            <div className="text-gray-600 font-medium">Peak Hour Jobs</div>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon">💰</div>
-            <div className="stat-value">₹{stats?.totalRevenue || 0}</div>
-            <div className="stat-label">Total Revenue</div>
+          <div className="bg-white rounded-2xl shadow-xl p-6 text-center border-t-4 border-pink-500 hover:shadow-2xl transition-shadow">
+            <div className="text-5xl mb-4">💰</div>
+            <div className="text-3xl font-bold text-purple-900 mb-2">₹{stats?.totalRevenue || 0}</div>
+            <div className="text-gray-600 font-medium">Total Revenue</div>
           </div>
         </div>
 
-        <div className="card">
-          <h2>📊 Job Status Distribution</h2>
-          <div className="status-chart">
-            <div className="chart-item">
-              <div className="chart-label">Waiting</div>
-              <div className="chart-bar">
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+          <h2 className="text-2xl font-bold text-purple-900 mb-6">📊 Job Status Distribution</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="w-32 text-gray-700 font-medium">Waiting</div>
+              <div className="flex-1 bg-gray-200 rounded-full h-6 overflow-hidden">
                 <div
-                  className="chart-fill waiting"
+                  className="bg-purple-600 h-full rounded-full flex items-center justify-end pr-2 text-white text-sm font-semibold"
                   style={{ width: `${(stats?.statusCounts?.waiting || 0) / (stats?.totalJobs || 1) * 100}%` }}
-                ></div>
+                >
+                  {stats?.statusCounts?.waiting || 0}
+                </div>
               </div>
-              <div className="chart-value">{stats?.statusCounts?.waiting || 0}</div>
             </div>
-            <div className="chart-item">
-              <div className="chart-label">Printing</div>
-              <div className="chart-bar">
+            <div className="flex items-center gap-4">
+              <div className="w-32 text-gray-700 font-medium">Printing</div>
+              <div className="flex-1 bg-gray-200 rounded-full h-6 overflow-hidden">
                 <div
-                  className="chart-fill printing"
+                  className="bg-blue-500 h-full rounded-full flex items-center justify-end pr-2 text-white text-sm font-semibold"
                   style={{ width: `${(stats?.statusCounts?.printing || 0) / (stats?.totalJobs || 1) * 100}%` }}
-                ></div>
+                >
+                  {stats?.statusCounts?.printing || 0}
+                </div>
               </div>
-              <div className="chart-value">{stats?.statusCounts?.printing || 0}</div>
             </div>
-            <div className="chart-item">
-              <div className="chart-label">Done</div>
-              <div className="chart-bar">
+            <div className="flex items-center gap-4">
+              <div className="w-32 text-gray-700 font-medium">Done</div>
+              <div className="flex-1 bg-gray-200 rounded-full h-6 overflow-hidden">
                 <div
-                  className="chart-fill done"
+                  className="bg-green-500 h-full rounded-full flex items-center justify-end pr-2 text-white text-sm font-semibold"
                   style={{ width: `${(stats?.statusCounts?.done || 0) / (stats?.totalJobs || 1) * 100}%` }}
-                ></div>
+                >
+                  {stats?.statusCounts?.done || 0}
+                </div>
               </div>
-              <div className="chart-value">{stats?.statusCounts?.done || 0}</div>
             </div>
-            <div className="chart-item">
-              <div className="chart-label">Pending Payment</div>
-              <div className="chart-bar">
+            <div className="flex items-center gap-4">
+              <div className="w-32 text-gray-700 font-medium">Pending Payment</div>
+              <div className="flex-1 bg-gray-200 rounded-full h-6 overflow-hidden">
                 <div
-                  className="chart-fill pending"
+                  className="bg-yellow-500 h-full rounded-full flex items-center justify-end pr-2 text-white text-sm font-semibold"
                   style={{ width: `${(stats?.statusCounts?.pending || 0) / (stats?.totalJobs || 1) * 100}%` }}
-                ></div>
+                >
+                  {stats?.statusCounts?.pending || 0}
+                </div>
               </div>
-              <div className="chart-value">{stats?.statusCounts?.pending || 0}</div>
             </div>
           </div>
         </div>
 
-        <div className="card">
-          <h2>⏰ Peak Time Analysis</h2>
-          <div className="peak-time-info">
-            <p><strong>Busiest Hour:</strong> {stats?.peakHour || 'N/A'}</p>
-            <p><strong>Jobs in Peak Hour:</strong> {stats?.peakHourJobs || 0}</p>
-            <p><strong>Average Processing Time:</strong> {stats?.avgProcessingTime || 0} minutes</p>
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <h2 className="text-2xl font-bold text-purple-900 mb-6">⏰ Peak Time Analysis</h2>
+          <div className="space-y-3 text-gray-700">
+            <p><strong className="text-purple-900">Busiest Hour:</strong> {stats?.peakHour || 'N/A'}</p>
+            <p><strong className="text-purple-900">Jobs in Peak Hour:</strong> {stats?.peakHourJobs || 0}</p>
+            <p><strong className="text-purple-900">Average Processing Time:</strong> {stats?.avgProcessingTime || 0} minutes</p>
           </div>
         </div>
       </div>

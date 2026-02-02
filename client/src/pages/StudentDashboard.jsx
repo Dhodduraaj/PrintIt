@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import axios from 'axios';
-import './StudentDashboard.css';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -93,30 +92,30 @@ const StudentDashboard = () => {
   };
 
   return (
-    <div className="student-dashboard">
-      <div className="container">
-        <div className="dashboard-header">
-          <h1>Welcome, {user?.name}!</h1>
-          <p>Upload your document and join the virtual queue</p>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-purple-900 mb-2">Welcome, {user?.name}!</h1>
+          <p className="text-lg text-purple-700">Upload your document and join the virtual queue</p>
         </div>
 
-        <div className="card">
-          <h2>📤 Upload Document</h2>
-          {error && <div className="error-message">{error}</div>}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+          <h2 className="text-2xl font-bold text-purple-900 mb-6">📤 Upload Document</h2>
+          {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
 
           <form onSubmit={handleSubmit}>
             <div
-              className="file-upload-area"
+              className="border-2 border-dashed border-purple-300 rounded-xl p-12 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all mb-6"
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="upload-icon">📄</div>
-              <p className="upload-text">
+              <div className="text-6xl mb-4">📄</div>
+              <p className="text-lg font-semibold text-gray-700 mb-2">
                 {formData.fileName || 'Click or drag file here to upload'}
               </p>
-              <p className="upload-hint">PDF or DOC files only (Max 10MB)</p>
+              <p className="text-sm text-gray-500">PDF or DOC files only (Max 10MB)</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -127,21 +126,21 @@ const StudentDashboard = () => {
             </div>
 
             {formData.fileName && (
-              <div className="file-info">
-                <span>📎 {formData.fileName}</span>
+              <div className="flex items-center justify-between bg-purple-100 px-4 py-3 rounded-lg mb-6">
+                <span className="text-purple-900 font-medium">📎 {formData.fileName}</span>
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, file: null, fileName: '' })}
-                  className="btn-remove"
+                  className="text-red-600 hover:text-red-800 font-bold text-xl"
                 >
                   ✕
                 </button>
               </div>
             )}
 
-            <div className="form-row">
-              <div className="input-group">
-                <label>Page Count</label>
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Page Count</label>
                 <input
                   type="number"
                   min="1"
@@ -149,23 +148,25 @@ const StudentDashboard = () => {
                   onChange={(e) => setFormData({ ...formData, pageCount: e.target.value })}
                   required
                   placeholder="Number of pages"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
 
-              <div className="input-group">
-                <label>Print Type</label>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Print Type</label>
                 <select
                   value={formData.printType}
                   onChange={(e) => setFormData({ ...formData, printType: e.target.value })}
                   required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="black-white">Black & White</option>
                   <option value="color">Color</option>
                 </select>
               </div>
 
-              <div className="input-group">
-                <label>Copies</label>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Copies</label>
                 <input
                   type="number"
                   min="1"
@@ -173,13 +174,14 @@ const StudentDashboard = () => {
                   value={formData.copies}
                   onChange={(e) => setFormData({ ...formData, copies: e.target.value })}
                   required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              className="btn btn-primary btn-full"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={uploading || !formData.file}
             >
               {uploading ? 'Uploading...' : '📤 Upload & Join Queue'}
@@ -187,9 +189,9 @@ const StudentDashboard = () => {
           </form>
         </div>
 
-        <div className="info-card">
-          <h3>💡 Pro Tip</h3>
-          <p>
+        <div className="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl shadow-lg p-6 border-l-4 border-purple-600">
+          <h3 className="text-xl font-bold text-purple-900 mb-2">💡 Pro Tip</h3>
+          <p className="text-gray-700">
             Upload your documents <strong>before break time</strong> to avoid peak-hour congestion.
             During break, you'll only need to join the queue and pick up your prints!
           </p>

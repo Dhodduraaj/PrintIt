@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
-import './Auth.css';
 
 const StudentLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -41,21 +40,21 @@ const StudentLogin = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <h1>🖨️ Student Portal</h1>
-            <p>{isLogin ? 'Login to your account' : 'Create a new account'}</p>
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-purple-900 mb-2">🖨️ Student Portal</h1>
+            <p className="text-gray-600">{isLogin ? 'Login to your account' : 'Create a new account'}</p>
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <>
-                <div className="input-group">
-                  <label>Full Name</label>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
                   <input
                     type="text"
                     name="name"
@@ -63,10 +62,11 @@ const StudentLogin = () => {
                     onChange={handleChange}
                     required
                     placeholder="Enter your full name"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                   />
                 </div>
-                <div className="input-group">
-                  <label>Student ID</label>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Student ID</label>
                   <input
                     type="text"
                     name="studentId"
@@ -74,12 +74,13 @@ const StudentLogin = () => {
                     onChange={handleChange}
                     required
                     placeholder="Enter your student ID"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                   />
                 </div>
               </>
             )}
-            <div className="input-group">
-              <label>Email</label>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
               <input
                 type="email"
                 name="email"
@@ -87,10 +88,11 @@ const StudentLogin = () => {
                 onChange={handleChange}
                 required
                 placeholder="Enter your email"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
               />
             </div>
-            <div className="input-group">
-              <label>Password</label>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
               <input
                 type="password"
                 name="password"
@@ -99,33 +101,34 @@ const StudentLogin = () => {
                 required
                 placeholder="Enter your password"
                 minLength={6}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
               />
             </div>
-            <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+            <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed" disabled={loading}>
               {loading ? 'Processing...' : isLogin ? 'Login' : 'Sign Up'}
             </button>
           </form>
 
-          <div className="toggle-auth">
+          <div className="text-center mt-6 text-gray-600">
             {isLogin ? (
               <>
                 Don't have an account?{' '}
-                <a href="#" onClick={(e) => { e.preventDefault(); setIsLogin(false); }}>
+                <a href="#" onClick={(e) => { e.preventDefault(); setIsLogin(false); }} className="text-purple-600 hover:text-purple-800 font-semibold">
                   Sign Up
                 </a>
               </>
             ) : (
               <>
                 Already have an account?{' '}
-                <a href="#" onClick={(e) => { e.preventDefault(); setIsLogin(true); }}>
+                <a href="#" onClick={(e) => { e.preventDefault(); setIsLogin(true); }} className="text-purple-600 hover:text-purple-800 font-semibold">
                   Login
                 </a>
               </>
             )}
           </div>
 
-          <div className="back-link">
-            <Link to="/">← Back to Home</Link>
+          <div className="text-center mt-6">
+            <Link to="/" className="text-purple-600 hover:text-purple-800 font-medium">← Back to Home</Link>
           </div>
         </div>
       </div>

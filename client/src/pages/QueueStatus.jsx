@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import axios from 'axios';
-import './QueueStatus.css';
 
 const QueueStatus = () => {
   const { user } = useAuth();
@@ -102,70 +101,76 @@ const QueueStatus = () => {
 
   if (loading) {
     return (
-      <div className="queue-status">
-        <div className="container">
-          <div className="loading">Loading...</div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-xl text-purple-900 font-semibold">Loading...</div>
       </div>
     );
   }
 
   if (!job) {
     return (
-      <div className="queue-status">
-        <div className="container">
-          <div className="card">
-            <h2>No Active Jobs</h2>
-            <p>You don't have any active print jobs.</p>
-            <button onClick={() => navigate('/student/dashboard')} className="btn btn-primary">
-              Upload Document
-            </button>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-12 text-center max-w-md w-full">
+          <h2 className="text-2xl font-bold text-purple-900 mb-4">No Active Jobs</h2>
+          <p className="text-gray-600 mb-6">You don't have any active print jobs.</p>
+          <button onClick={() => navigate('/student/dashboard')} className="px-8 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all shadow-lg">
+            Upload Document
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="queue-status">
-      <div className="container">
-        <div className="token-display">
-          <h2>Your Token Number</h2>
-          <div className="token-number">{job.tokenNumber || '---'}</div>
-          <div className={`status-indicator ${job.status}`}>
-            <span className={`status-dot ${job.status}`}></span>
-            <span className="status-text">{getStatusText(job.status)}</span>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-2xl p-8 mb-8 text-center">
+          <h2 className="text-2xl font-bold text-white mb-4">Your Token Number</h2>
+          <div className="text-7xl font-bold text-white mb-4">{job.tokenNumber || '---'}</div>
+          <div className="flex items-center justify-center gap-3">
+            <span className={`w-4 h-4 rounded-full animate-pulse ${
+              job.status === 'waiting' ? 'bg-yellow-300' :
+              job.status === 'printing' ? 'bg-blue-300' :
+              job.status === 'done' ? 'bg-green-300' :
+              'bg-orange-300'
+            }`}></span>
+            <span className="text-xl font-semibold text-white">{getStatusText(job.status)}</span>
           </div>
         </div>
 
-        <div className="queue-card">
-          <h3>Queue Information</h3>
-          <div className="queue-info">
-            <div className="info-item">
-              <span className="info-label">Position in Queue:</span>
-              <span className="info-value">{queuePosition > 0 ? `#${queuePosition}` : 'Processing...'}</span>
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <h3 className="text-2xl font-bold text-purple-900 mb-6">Queue Information</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Position in Queue:</span>
+              <span className="text-lg font-bold text-purple-600">{queuePosition > 0 ? `#${queuePosition}` : 'Processing...'}</span>
             </div>
-            <div className="info-item">
-              <span className="info-label">Document:</span>
-              <span className="info-value">{job.fileName}</span>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Document:</span>
+              <span className="text-gray-900 font-semibold">{job.fileName}</span>
             </div>
-            <div className="info-item">
-              <span className="info-label">Pages:</span>
-              <span className="info-value">{job.pageCount}</span>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Pages:</span>
+              <span className="text-gray-900 font-semibold">{job.pageCount}</span>
             </div>
-            <div className="info-item">
-              <span className="info-label">Type:</span>
-              <span className="info-value">
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Type:</span>
+              <span className="text-gray-900 font-semibold">
                 {job.printType === 'color' ? 'Color' : 'Black & White'}
               </span>
             </div>
-            <div className="info-item">
-              <span className="info-label">Copies:</span>
-              <span className="info-value">{job.copies}</span>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Copies:</span>
+              <span className="text-gray-900 font-semibold">{job.copies}</span>
             </div>
-            <div className="info-item">
-              <span className="info-label">Status:</span>
-              <span className={`badge ${getStatusBadge(job.status)}`}>
+            <div className="flex justify-between py-3">
+              <span className="text-gray-700 font-medium">Status:</span>
+              <span className={`px-4 py-1 rounded-full text-sm font-semibold ${
+                job.status === 'waiting' ? 'bg-purple-100 text-purple-700' :
+                job.status === 'printing' ? 'bg-blue-100 text-blue-700' :
+                job.status === 'done' ? 'bg-green-100 text-green-700' :
+                'bg-yellow-100 text-yellow-700'
+              }`}>
                 {getStatusText(job.status)}
               </span>
             </div>
@@ -173,12 +178,12 @@ const QueueStatus = () => {
         </div>
 
         {job.status === 'pending' && (
-          <div className="card">
-            <h3>💳 Payment Required</h3>
-            <p>Please complete payment to proceed with printing.</p>
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-xl shadow-lg p-6 mb-6">
+            <h3 className="text-xl font-bold text-yellow-900 mb-3">💳 Payment Required</h3>
+            <p className="text-yellow-900 mb-4">Please complete payment to proceed with printing.</p>
             <button
               onClick={() => navigate('/student/payment', { state: { jobId: job._id } })}
-              className="btn btn-primary"
+              className="px-8 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-all shadow-lg"
             >
               Complete Payment
             </button>
@@ -186,17 +191,17 @@ const QueueStatus = () => {
         )}
 
         {job.status === 'done' && (
-          <div className="card success-card">
-            <h3>✅ Print Ready!</h3>
-            <p>Your document has been printed and is ready for pickup.</p>
-            <p className="pickup-info">
+          <div className="bg-green-50 border-l-4 border-green-500 rounded-xl shadow-lg p-6 mb-6">
+            <h3 className="text-xl font-bold text-green-900 mb-3">✅ Print Ready!</h3>
+            <p className="text-green-900 mb-2">Your document has been printed and is ready for pickup.</p>
+            <p className="text-green-800 font-medium">
               Please collect your print from the vendor counter.
             </p>
           </div>
         )}
 
-        <div className="actions">
-          <button onClick={() => navigate('/student/dashboard')} className="btn btn-outline">
+        <div className="flex justify-center">
+          <button onClick={() => navigate('/student/dashboard')} className="px-8 py-3 bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transition-all">
             Upload Another Document
           </button>
         </div>
