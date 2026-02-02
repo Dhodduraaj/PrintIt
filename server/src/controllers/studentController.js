@@ -8,7 +8,11 @@ const {
 const getContentType = (mimetype, originalname) => {
   if (mimetype) return mimetype;
   const ext = originalname.split(".").pop()?.toLowerCase();
-  const types = { pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" };
+  const types = {
+    pdf: "application/pdf",
+    doc: "application/msword",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  };
   return types[ext] || "application/octet-stream";
 };
 
@@ -18,10 +22,21 @@ exports.uploadDocument = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const { pageCount, printType, copies } = req.body;
+    const {
+      pageCount,
+      pageRange,
+      printType,
+      copies,
+      duplex,
+      paperSize,
+      orientation,
+      pagesPerSheet,
+    } = req.body;
 
     if (!pageCount || !printType) {
-      return res.status(400).json({ message: "Page count and print type are required" });
+      return res
+        .status(400)
+        .json({ message: "Page count and print type are required" });
     }
 
     // Upload file to MongoDB GridFS
@@ -33,35 +48,36 @@ exports.uploadDocument = async (req, res) => {
 
     // Calculate amount
     const pageRate = printType === "color" ? 5 : 2;
-    const amount = parseInt(pageCount) * pageRate * parseInt(copies || 1);
+    const calculatedAmount =
+      parseInt(pageCount) * pageRate * parseInt(copies || 1);
 
     const job = await PrintJob.create({
       student: req.user._id,
       fileName: req.file.originalname,
       gridFsFileId,
       pageCount: parseInt(pageCount),
+      pageRange: pageRange || null,
       printType,
       copies: parseInt(copies || 1),
-      amount,
-      status: "waiting", // Directly enter waiting queue (no payment step)
+      duplex: duplex || "single-sided",
+      paperSize: paperSize || "A4",
+      orientation: orientation || "portrait",
+      pagesPerSheet: parseInt(pagesPerSheet || 1),
+      amount: calculatedAmount,
+      paymentVerified: false,
+      status: "pending", // Start as pending until payment verified
     });
 
-    // Emit new job event
-    const io = req.app.get("io");
-    if (io) {
-      const populatedJob = await PrintJob.findById(job._id).populate("student", "name email");
-      io.emit("newJob", populatedJob);
-    }
-
     res.status(201).json({
-      message: "Document uploaded successfully",
+      message: "Document uploaded successfully. Please complete payment.",
       jobId: job._id,
       tokenNumber: job.tokenNumber,
+      amount: calculatedAmount,
     });
   } catch (err) {
     console.error("Upload error:", err);
-    res.status(500).json({ 
-      message: err.message || "Failed to upload document. Please try again." 
+    res.status(500).json({
+      message: err.message || "Failed to upload document. Please try again.",
     });
   }
 };
@@ -69,20 +85,28 @@ exports.uploadDocument = async (req, res) => {
 exports.getJobStatus = async (req, res) => {
   try {
     const { jobId } = req.params;
-    const job = await PrintJob.findOne({ _id: jobId, student: req.user._id }).populate(
-      "student",
-      "name email"
-    );
+    const job = await PrintJob.findOne({
+      _id: jobId,
+      student: req.user._id,
+    }).populate("student", "name email");
 
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    // Calculate queue position
-    const queuePosition = await PrintJob.countDocuments({
-      status: { $in: ["waiting", "printing"] },
-      createdAt: { $lt: job.createdAt },
-    }) + (job.status === "waiting" || job.status === "printing" ? 1 : 0);
+    // Calculate queue position only for paid jobs in waiting/printing status
+    let queuePosition = 0;
+    if (
+      job.paymentVerified &&
+      (job.status === "waiting" || job.status === "printing")
+    ) {
+      queuePosition =
+        (await PrintJob.countDocuments({
+          status: { $in: ["waiting", "printing"] },
+          paymentVerified: true,
+          createdAt: { $lt: job.createdAt },
+        })) + 1;
+    }
 
     res.json({ job, queuePosition });
   } catch (err) {
@@ -100,11 +124,19 @@ exports.getLatestJob = async (req, res) => {
       return res.json({ job: null, queuePosition: 0 });
     }
 
-    // Calculate queue position
-    const queuePosition = await PrintJob.countDocuments({
-      status: { $in: ["waiting", "printing"] },
-      createdAt: { $lt: job.createdAt },
-    }) + (job.status === "waiting" || job.status === "printing" ? 1 : 0);
+    // Calculate queue position only for paid jobs in waiting/printing status
+    let queuePosition = 0;
+    if (
+      job.paymentVerified &&
+      (job.status === "waiting" || job.status === "printing")
+    ) {
+      queuePosition =
+        (await PrintJob.countDocuments({
+          status: { $in: ["waiting", "printing"] },
+          paymentVerified: true,
+          createdAt: { $lt: job.createdAt },
+        })) + 1;
+    }
 
     res.json({ job, queuePosition });
   } catch (err) {
