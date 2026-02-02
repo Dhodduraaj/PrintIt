@@ -148,7 +148,7 @@ const StudentDashboard = () => {
   if (!serviceOpen) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 flex items-center justify-center">
-        <div className="w-full max-w-5xl px-4 sm:px-6 lg:px-8 flex justify-center">
+        <div className="w-full max-w-[1400px] mx-auto px-6 flex justify-center">
           <img
             src={pcServiceDesktop}
             alt="Service not available"
@@ -166,7 +166,7 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 py-6">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[1280px] mx-auto px-6">
         {/* Header */}
         <div className="mb-6">
           <div>
@@ -179,9 +179,9 @@ const StudentDashboard = () => {
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Main Upload Card */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-8">
             <div className="bg-white rounded-xl shadow-lg p-6 border border-purple-100">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">📤</span>
@@ -330,7 +330,7 @@ const StudentDashboard = () => {
           </div>
 
           {/* Sidebar - Tips & Info */}
-          <div className="lg:col-span-1 space-y-4">
+          <div className="lg:col-span-4 space-y-4">
             {/* Pro Tip Card */}
             <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl shadow-md p-5 border border-amber-200">
               <div className="flex items-center gap-2 mb-2">
