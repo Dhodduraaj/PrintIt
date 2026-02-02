@@ -21,10 +21,7 @@ const Navbar = () => {
             {!user ? (
               <>
                 <Link to="/student/login" className="text-gray-300 hover:text-gray-100 font-medium transition-colors">
-                  Student Login
-                </Link>
-                <Link to="/vendor/login" className="text-gray-300 hover:text-gray-100 font-medium transition-colors">
-                  Vendor Login
+                  Login
                 </Link>
               </>
             ) : user.role === 'student' ? (
