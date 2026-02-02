@@ -134,14 +134,10 @@ exports.deleteJob = async (req, res) => {
     if (job.gridFsFileId) {
       try {
         const bucket = getBucket();
-        await new Promise((resolve, reject) => {
-          bucket.delete(job.gridFsFileId, (err) => {
-            if (err) return reject(err);
-            resolve();
-          });
-        });
+        // Use promise form so errors are caught here instead of crashing the process
+        await bucket.delete(job.gridFsFileId);
       } catch (err) {
-        // Log but don't block job deletion if file removal fails
+        // If file is already missing in GridFS, just log and continue
         console.error("Error deleting GridFS file:", err.message || err);
       }
     }
