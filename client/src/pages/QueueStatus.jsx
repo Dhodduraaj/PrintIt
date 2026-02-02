@@ -202,25 +202,6 @@ const QueueStatus = () => {
           </div>
         </div>
 
-        {job.status === "pending" && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-xl shadow-lg p-6 mb-6">
-            <h3 className="text-xl font-bold text-yellow-900 mb-3">
-              💳 Payment Required
-            </h3>
-            <p className="text-yellow-900 mb-4">
-              Please complete payment to proceed with printing.
-            </p>
-            <button
-              onClick={() =>
-                navigate("/student/payment", { state: { jobId: job._id } })
-              }
-              className="px-8 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-all shadow-lg"
-            >
-              Complete Payment
-            </button>
-          </div>
-        )}
-
         {job.status === "done" && (
           <div className="bg-green-50 border-l-4 border-green-500 rounded-xl shadow-lg p-6 mb-6">
             <h3 className="text-xl font-bold text-green-900 mb-3">

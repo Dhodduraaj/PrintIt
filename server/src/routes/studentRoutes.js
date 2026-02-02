@@ -4,7 +4,6 @@ const {
   uploadDocument,
   getJobStatus,
   getLatestJob,
-  submitPayment,
 } = require("../controllers/studentController");
 const handleFileUpload = require("../middleware/uploadHandler");
 
@@ -18,6 +17,5 @@ router.use(studentOnly);
 router.post("/upload", handleFileUpload("file"), uploadDocument);
 router.get("/job/:jobId", getJobStatus);
 router.get("/latest-job", getLatestJob);
-router.post("/payment/:jobId", submitPayment);
 
 module.exports = router;

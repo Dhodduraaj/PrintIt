@@ -3,7 +3,6 @@ const { protect, vendorOnly } = require("../middleware/auth");
 const {
   getJobs,
   approveJob,
-  verifyPayment,
   completeJob,
   downloadFile,
 } = require("../controllers/vendorController");
@@ -18,7 +17,6 @@ router.use(vendorOnly);
 
 router.get("/jobs", getJobs);
 router.post("/jobs/:jobId/approve", approveJob);
-router.post("/jobs/:jobId/verify-payment", verifyPayment);
 router.post("/jobs/:jobId/complete", completeJob);
 router.get("/jobs/:jobId/download", downloadFile);
 

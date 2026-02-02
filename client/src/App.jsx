@@ -15,7 +15,6 @@ import StudentLogin from "./pages/StudentLogin";
 import VendorLogin from "./pages/VendorLogin";
 import StudentDashboard from "./pages/StudentDashboard";
 import QueueStatus from "./pages/QueueStatus";
-import Payment from "./pages/Payment";
 import VendorDashboard from "./pages/VendorDashboard";
 import Admin from "./pages/Admin";
 
@@ -56,14 +55,6 @@ function AppContent() {
             element={
               <ProtectedRoute requiredRole="student">
                 <QueueStatus />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/student/payment"
-            element={
-              <ProtectedRoute requiredRole="student">
-                <Payment />
               </ProtectedRoute>
             }
           />

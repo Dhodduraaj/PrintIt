@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
-import axios from 'axios';
 import api from '../utils/api';
 
 const VendorDashboard = () => {
@@ -51,17 +50,6 @@ const VendorDashboard = () => {
       fetchJobs();
     } catch (err) {
       alert(err.response?.data?.message || "Failed to approve job");
-    }
-  };
-
-  const handleVerifyPayment = async (jobId, upiRef) => {
-    try {
-      await api.post(`/api/vendor/jobs/${jobId}/verify-payment`, {
-        upiReferenceId: upiRef,
-      });
-      fetchJobs();
-    } catch (err) {
-      alert(err.response?.data?.message || "Payment verification failed");
     }
   };
 
@@ -149,7 +137,7 @@ const VendorDashboard = () => {
           <p className="text-lg text-purple-700">Welcome, {user?.name}</p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-lg p-6 text-center border-2 border-purple-200">
             <div className="text-4xl font-bold text-purple-600 mb-2">
               {jobs.filter((j) => j.status === "waiting").length}
@@ -161,14 +149,6 @@ const VendorDashboard = () => {
               {jobs.filter((j) => j.status === "printing").length}
             </div>
             <div className="text-sm font-semibold text-gray-600">Printing</div>
-          </div>
-          <div className="bg-white rounded-xl shadow-lg p-6 text-center border-2 border-yellow-200">
-            <div className="text-4xl font-bold text-yellow-600 mb-2">
-              {jobs.filter((j) => j.status === "pending").length}
-            </div>
-            <div className="text-sm font-semibold text-gray-600">
-              Payment Pending
-            </div>
           </div>
           <div className="bg-white rounded-xl shadow-lg p-6 text-center border-2 border-green-200">
             <div className="text-4xl font-bold text-green-600 mb-2">
@@ -196,12 +176,6 @@ const VendorDashboard = () => {
             onClick={() => setFilter("printing")}
           >
             Printing
-          </button>
-          <button
-            className={`px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap ${filter === "pending" ? "bg-purple-600 text-white shadow-lg" : "bg-white text-purple-600 hover:bg-purple-50"}`}
-            onClick={() => setFilter("pending")}
-          >
-            Payment Pending
           </button>
         </div>
 
@@ -264,19 +238,6 @@ const VendorDashboard = () => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-3 lg:min-w-[200px]">
-                    {job.status === "pending" && (
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => {
-                            const refId = prompt("Enter UPI Reference ID:");
-                            if (refId) handleVerifyPayment(job._id, refId);
-                          }}
-                          className="w-full px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-all"
-                        >
-                          Verify Payment
-                        </button>
-                      </div>
-                    )}
                     {job.status === "waiting" && (
                       <button
                         onClick={() => handleApprove(job._id)}

@@ -43,7 +43,7 @@ const printJobSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["pending", "waiting", "printing", "done"],
-      default: "pending",
+      default: "waiting",
     },
     upiReferenceId: {
       type: String,

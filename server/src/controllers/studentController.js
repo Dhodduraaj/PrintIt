@@ -40,7 +40,7 @@ exports.uploadDocument = async (req, res) => {
       printType,
       copies: parseInt(copies || 1),
       amount,
-      status: "pending", // Waiting for payment
+      status: "waiting", // Directly enter waiting queue (no payment step)
     });
 
     // Emit new job event
@@ -109,57 +109,4 @@ exports.getLatestJob = async (req, res) => {
   }
 };
 
-exports.submitPayment = async (req, res) => {
-  try {
-    const { jobId } = req.params;
-    const { upiReferenceId } = req.body;
-
-    if (!upiReferenceId) {
-      return res.status(400).json({ message: "UPI reference ID is required" });
-    }
-
-    const job = await PrintJob.findOne({ _id: jobId, student: req.user._id });
-
-    if (!job) {
-      return res.status(404).json({ message: "Job not found" });
-    }
-
-    // Check if UPI reference ID is already used
-    const existingJob = await PrintJob.findOne({
-      upiReferenceId: upiReferenceId.trim(),
-      _id: { $ne: jobId },
-    });
-
-    if (existingJob) {
-      return res.status(400).json({
-        message: "This UPI reference ID has already been used",
-      });
-    }
-
-    job.upiReferenceId = upiReferenceId.trim();
-    job.status = "waiting"; // Move to waiting queue after payment
-    await job.save();
-
-    // Emit update
-    const io = req.app.get("io");
-    if (io) {
-      const updatedJob = await PrintJob.findById(job._id).populate("student", "name email");
-      io.emit("jobUpdated", updatedJob);
-      io.emit("queueUpdate", {
-        jobId: job._id,
-        job: updatedJob,
-        queuePosition: await PrintJob.countDocuments({
-          status: { $in: ["waiting", "printing"] },
-          createdAt: { $lt: job.createdAt },
-        }) + 1,
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Payment submitted. Waiting for vendor verification.",
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
+// submitPayment removed – jobs now enter the waiting queue immediately without a payment step
