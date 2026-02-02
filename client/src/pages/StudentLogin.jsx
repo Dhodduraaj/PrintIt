@@ -12,6 +12,7 @@ const StudentLogin = () => {
     name: "",
     email: "",
     studentId: "",
+    mobileNumber: "",
     password: "",
   });
   const [error, setError] = useState("");
@@ -169,6 +170,23 @@ const StudentLogin = () => {
                     />
                   </div>
                 )}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Mobile Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    name="mobileNumber"
+                    value={formData.mobileNumber}
+                    onChange={handleChange}
+                    required
+                    placeholder="Enter your mobile number (e.g., +91 9876543210)"
+                    className="w-full px-3 py-2.5 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all bg-white backdrop-blur-sm text-gray-900 placeholder-gray-400"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Include country code (e.g., +91 for India)
+                  </p>
+                </div>
               </div>
             )}
             <div>
