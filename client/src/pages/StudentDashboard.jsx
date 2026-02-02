@@ -97,138 +97,237 @@ const StudentDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-purple-900 mb-2">
-            Welcome, {user?.name}!
-          </h1>
-          <p className="text-lg text-purple-700">
-            Upload your document and join the virtual queue
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 py-6">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-purple-900">
+              Hey {user?.name}! 👋
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Quick upload • Fast queue • Easy pickup
+            </p>
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
-          <h2 className="text-2xl font-bold text-purple-900 mb-6">
-            📤 Upload Document
-          </h2>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
-              {error}
-            </div>
-          )}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Main Upload Card */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-purple-100">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl">📤</span>
+                <h2 className="text-xl font-bold text-purple-900">
+                  Upload & Print
+                </h2>
+              </div>
 
-          <form onSubmit={handleSubmit}>
-            <div
-              className="border-2 border-dashed border-purple-300 rounded-xl p-12 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all mb-6"
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <div className="text-6xl mb-4">📄</div>
-              <p className="text-lg font-semibold text-gray-700 mb-2">
-                {formData.fileName || "Click or drag file here to upload"}
-              </p>
-              <p className="text-sm text-gray-500">
-                PDF or DOC files only (Max 10MB)
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-              />
-            </div>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg mb-4 text-sm">
+                  {error}
+                </div>
+              )}
 
-            {formData.fileName && (
-              <div className="flex items-center justify-between bg-purple-100 px-4 py-3 rounded-lg mb-6">
-                <span className="text-purple-900 font-medium">
-                  📎 {formData.fileName}
-                </span>
+              <form onSubmit={handleSubmit}>
+                {/* Compact File Upload */}
+                <div
+                  className="border-2 border-dashed border-purple-300 rounded-lg p-6 text-center cursor-pointer hover:border-purple-500 hover:bg-purple-50/50 transition-all mb-4 relative group"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {formData.fileName ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <span className="text-xl">📄</span>
+                        </div>
+                        <div className="text-left">
+                          <p className="font-semibold text-gray-800 text-sm">
+                            {formData.fileName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Ready to print
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData({
+                            ...formData,
+                            file: null,
+                            fileName: "",
+                          });
+                        }}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg p-2 transition-colors"
+                      >
+                        <span className="text-lg">✕</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-4xl mb-2">📁</div>
+                      <p className="font-semibold text-gray-700 text-sm mb-1">
+                        Drop file or click to browse
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PDF, DOC, DOCX • Max 10MB
+                      </p>
+                    </div>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                    style={{ display: "none" }}
+                  />
+                </div>
+
+                {/* Print Options - Compact Grid */}
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Pages
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.pageCount}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pageCount: e.target.value })
+                      }
+                      required
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Type
+                    </label>
+                    <select
+                      value={formData.printType}
+                      onChange={(e) =>
+                        setFormData({ ...formData, printType: e.target.value })
+                      }
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    >
+                      <option value="black-white">B&W</option>
+                      <option value="color">Color</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1">
+                      Copies
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={formData.copies}
+                      onChange={(e) =>
+                        setFormData({ ...formData, copies: e.target.value })
+                      }
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                    />
+                  </div>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={() =>
-                    setFormData({ ...formData, file: null, fileName: "" })
-                  }
-                  className="text-red-600 hover:text-red-800 font-bold text-xl"
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-3 rounded-lg transition-all shadow-md hover:shadow-xl transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  disabled={uploading || !formData.file}
                 >
-                  ✕
+                  {uploading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="animate-spin">⏳</span> Uploading...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <span>🚀</span> Upload & Join Queue
+                    </span>
+                  )}
                 </button>
-              </div>
-            )}
+              </form>
+            </div>
+          </div>
 
-            <div className="grid md:grid-cols-3 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Page Count
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.pageCount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pageCount: e.target.value })
-                  }
-                  required
-                  placeholder="Number of pages"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
+          {/* Sidebar - Tips & Info */}
+          <div className="lg:col-span-1 space-y-4">
+            {/* Pro Tip Card */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl shadow-md p-5 border border-amber-200">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">💡</span>
+                <h3 className="font-bold text-amber-900 text-sm">Pro Tip</h3>
               </div>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Upload <strong>before break time</strong> to skip the rush!
+                You'll get your prints faster.
+              </p>
+            </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Print Type
-                </label>
-                <select
-                  value={formData.printType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, printType: e.target.value })
-                  }
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                >
-                  <option value="black-white">Black & White</option>
-                  <option value="color">Color</option>
-                </select>
+            {/* How It Works */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-md p-5 border border-blue-200">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">📋</span>
+                <h3 className="font-bold text-blue-900 text-sm">Quick Guide</h3>
               </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Copies
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={formData.copies}
-                  onChange={(e) =>
-                    setFormData({ ...formData, copies: e.target.value })
-                  }
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-600 font-bold text-xs">1.</span>
+                  <p className="text-xs text-blue-800">Upload your document</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-600 font-bold text-xs">2.</span>
+                  <p className="text-xs text-blue-800">Get queue position</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-600 font-bold text-xs">3.</span>
+                  <p className="text-xs text-blue-800">Pay via UPI</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-600 font-bold text-xs">4.</span>
+                  <p className="text-xs text-blue-800">Collect when ready!</p>
+                </div>
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={uploading || !formData.file}
-            >
-              {uploading ? "Uploading..." : "📤 Upload & Join Queue"}
-            </button>
-          </form>
-        </div>
-
-        <div className="bg-gradient-to-r from-purple-100 to-indigo-100 rounded-xl shadow-lg p-6 border-l-4 border-purple-600">
-          <h3 className="text-xl font-bold text-purple-900 mb-2">💡 Pro Tip</h3>
-          <p className="text-gray-700">
-            Upload your documents <strong>before break time</strong> to avoid
-            peak-hour congestion. During break, you'll only need to join the
-            queue and pick up your prints!
-          </p>
+            {/* Stats Card */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl shadow-md p-5 border border-green-200">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">⚡</span>
+                <h3 className="font-bold text-green-900 text-sm">
+                  Why PrintFlow?
+                </h3>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-green-800">No waiting</span>
+                  <span className="text-xs font-bold text-green-700">✓</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-green-800">
+                    Real-time tracking
+                  </span>
+                  <span className="text-xs font-bold text-green-700">✓</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-green-800">
+                    Digital payment
+                  </span>
+                  <span className="text-xs font-bold text-green-700">✓</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
