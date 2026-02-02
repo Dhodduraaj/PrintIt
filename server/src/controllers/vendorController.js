@@ -6,6 +6,7 @@ const {
   getServiceStatus,
   setServiceStatus,
 } = require("../services/serviceStatus");
+const { sendPickupNotification } = require("../services/smsService");
 
 exports.getJobs = async (req, res) => {
   try {
@@ -54,6 +55,10 @@ exports.approveJob = async (req, res) => {
         jobId: job._id,
         status: "printing",
       });
+      io.emit("request:status", {
+        jobId: job._id,
+        status: "printing",
+      });
 
       // Recalculate and emit queue positions for all waiting/printing jobs
       const queueJobs = await PrintJob.find({
@@ -62,6 +67,10 @@ exports.approveJob = async (req, res) => {
 
       queueJobs.forEach((queueJob, index) => {
         io.emit("queueUpdate", {
+          jobId: queueJob._id.toString(),
+          queuePosition: index + 1,
+        });
+        io.emit("queue:update", {
           jobId: queueJob._id.toString(),
           queuePosition: index + 1,
         });
@@ -90,33 +99,41 @@ exports.completeJob = async (req, res) => {
     job.status = "done";
     await job.save();
 
-    // Emit update and recalculate queue positions
+    // Populate student info for SMS and socket events
+    const populatedJob = await PrintJob.findById(job._id).populate(
+      "student",
+      "name email mobileNumber",
+    );
+
+    // Send SMS notification to student (non-blocking)
+    if (populatedJob.student?.mobileNumber) {
+      sendPickupNotification({
+        to: populatedJob.student.mobileNumber,
+        studentName: populatedJob.student.name,
+        job: populatedJob,
+      }).catch((err) => {
+        // Log but don't fail the request if SMS fails
+        console.error("Failed to send pickup SMS:", err);
+      });
+    } else {
+      console.warn(`⚠️ No mobile number found for student ${populatedJob.student?._id}. SMS not sent.`);
+    }
+
+    // Emit update
     const io = req.app.get("io");
     if (io) {
-      const updatedJob = await PrintJob.findById(job._id).populate(
-        "student",
-        "name email",
-      );
-      io.emit("jobUpdated", updatedJob);
+      io.emit("jobUpdated", populatedJob);
       io.emit("jobStatusUpdate", {
         jobId: job._id,
         status: "done",
       });
-
-      // Recalculate and emit queue positions for all remaining waiting/printing jobs
-      const queueJobs = await PrintJob.find({
-        status: { $in: ["waiting", "printing"] },
-      }).sort({ createdAt: 1 });
-
-      queueJobs.forEach((queueJob, index) => {
-        io.emit("queueUpdate", {
-          jobId: queueJob._id.toString(),
-          queuePosition: index + 1,
-        });
+      io.emit("request:status", {
+        jobId: job._id,
+        status: "done",
       });
     }
 
-    res.json({ message: "Job marked as completed", job });
+    res.json({ message: "Job marked as completed", job: populatedJob });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

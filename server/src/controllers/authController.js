@@ -12,10 +12,16 @@ const generateToken = (user) => {
 
 exports.studentRegister = async (req, res) => {
   try {
-    const { name, email, password, studentId } = req.body;
+    const { name, email, password, studentId, mobileNumber } = req.body;
 
-    if (!name || !email || !password || !studentId) {
+    if (!name || !email || !password || !studentId || !mobileNumber) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Validate mobile number format (basic validation)
+    const mobileRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
+    if (!mobileRegex.test(mobileNumber.replace(/\s/g, ''))) {
+      return res.status(400).json({ message: "Invalid mobile number format" });
     }
 
     const exists = await User.findOne({ email });
@@ -31,6 +37,7 @@ exports.studentRegister = async (req, res) => {
       password: hashed,
       role: "STUDENT",
       studentId,
+      mobileNumber: mobileNumber.replace(/\s/g, ''), // Remove spaces
     });
 
     res.status(201).json({
@@ -43,7 +50,7 @@ exports.studentRegister = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Login error:", err);
+    console.error("Registration error:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -120,10 +127,16 @@ exports.vendorLogin = async (req, res) => {
 
 exports.vendorRegister = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, mobileNumber } = req.body;
 
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !mobileNumber) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Validate mobile number format (basic validation)
+    const mobileRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
+    if (!mobileRegex.test(mobileNumber.replace(/\s/g, ''))) {
+      return res.status(400).json({ message: "Invalid mobile number format" });
     }
 
     const exists = await User.findOne({ email });
@@ -138,6 +151,7 @@ exports.vendorRegister = async (req, res) => {
       email,
       password: hashed,
       role: "VENDOR",
+      mobileNumber: mobileNumber.replace(/\s/g, ''), // Remove spaces
     });
 
     res.status(201).json({
@@ -150,7 +164,7 @@ exports.vendorRegister = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Login error:", err);
+    console.error("Registration error:", err);
     res.status(500).json({ message: err.message });
   }
 };
