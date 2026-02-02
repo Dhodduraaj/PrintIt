@@ -3,9 +3,10 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const generateToken = (user) => {
+  const jwtSecret = process.env.JWT_SECRET || "printflow-secret-key-change-in-production";
   return jwt.sign(
     { id: user._id, role: user.role },
-    process.env.JWT_SECRET || "your-secret-key",
+    jwtSecret,
     { expiresIn: "7d" }
   );
 };

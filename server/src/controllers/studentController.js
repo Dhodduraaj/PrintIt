@@ -31,7 +31,8 @@ exports.uploadDocument = async (req, res) => {
     // Emit new job event
     const io = req.app.get("io");
     if (io) {
-      io.emit("newJob", await PrintJob.findById(job._id).populate("student", "name email"));
+      const populatedJob = await PrintJob.findById(job._id).populate("student", "name email");
+      io.emit("newJob", populatedJob);
     }
 
     res.status(201).json({
@@ -40,7 +41,10 @@ exports.uploadDocument = async (req, res) => {
       tokenNumber: job.tokenNumber,
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Upload error:", err);
+    res.status(500).json({ 
+      message: err.message || "Failed to upload document. Please try again." 
+    });
   }
 };
 
