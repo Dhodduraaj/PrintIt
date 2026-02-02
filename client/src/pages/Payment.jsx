@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
-import './Payment.css';
 
 const Payment = () => {
   const { user } = useAuth();
@@ -76,63 +75,59 @@ const Payment = () => {
 
   if (!job) {
     return (
-      <div className="payment-page">
-        <div className="container">
-          <div className="loading">Loading...</div>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-xl text-purple-900 font-semibold">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="payment-page">
-      <div className="container">
-        <div className="payment-header">
-          <h1>💳 Payment Confirmation</h1>
-          <p>Enter your UPI payment reference ID</p>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-purple-900 mb-2">💳 Payment Confirmation</h1>
+          <p className="text-lg text-purple-700">Enter your UPI payment reference ID</p>
         </div>
 
-        <div className="card">
-          <h3>Order Summary</h3>
-          <div className="order-details">
-            <div className="detail-row">
-              <span>Document:</span>
-              <span>{job.fileName}</span>
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <h3 className="text-2xl font-bold text-purple-900 mb-6">Order Summary</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Document:</span>
+              <span className="text-gray-900 font-semibold">{job.fileName}</span>
             </div>
-            <div className="detail-row">
-              <span>Pages:</span>
-              <span>{job.pageCount}</span>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Pages:</span>
+              <span className="text-gray-900 font-semibold">{job.pageCount}</span>
             </div>
-            <div className="detail-row">
-              <span>Type:</span>
-              <span>{job.printType === 'color' ? 'Color' : 'Black & White'}</span>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Type:</span>
+              <span className="text-gray-900 font-semibold">{job.printType === 'color' ? 'Color' : 'Black & White'}</span>
             </div>
-            <div className="detail-row">
-              <span>Copies:</span>
-              <span>{job.copies}</span>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Copies:</span>
+              <span className="text-gray-900 font-semibold">{job.copies}</span>
             </div>
-            <div className="detail-row total">
-              <span>Total Amount:</span>
-              <span className="amount">₹{calculateAmount()}</span>
+            <div className="flex justify-between py-4 bg-purple-50 px-4 rounded-lg">
+              <span className="text-lg font-bold text-purple-900">Total Amount:</span>
+              <span className="text-2xl font-bold text-purple-600">₹{calculateAmount()}</span>
             </div>
           </div>
         </div>
 
-        <div className="card">
-          <h3>UPI Payment</h3>
-          <div className="upi-qr-container">
-            <div className="upi-qr-placeholder">
-              <div className="qr-code">📱</div>
-              <p>Scan QR Code to Pay</p>
-              <p className="upi-id">UPI ID: vendor@printflow</p>
-            </div>
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <h3 className="text-2xl font-bold text-purple-900 mb-6">UPI Payment</h3>
+          <div className="bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl p-8 text-center mb-6">
+            <div className="text-6xl mb-4">📱</div>
+            <p className="text-lg font-semibold text-purple-900 mb-2">Scan QR Code to Pay</p>
+            <p className="text-purple-700 font-medium">UPI ID: vendor@printflow</p>
           </div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">{error}</div>}
 
           <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <label>UPI Reference ID</label>
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">UPI Reference ID</label>
               <input
                 type="text"
                 value={upiRef}
@@ -142,16 +137,16 @@ const Payment = () => {
                 }}
                 placeholder="Enter UPI transaction reference ID"
                 required
-                className="upi-input"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
-              <small className="input-hint">
+              <small className="text-gray-500 mt-2 block">
                 Find this in your payment app after completing the transaction
               </small>
             </div>
 
             <button
               type="submit"
-              className="btn btn-primary btn-full"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 rounded-lg transition-all shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={submitting}
             >
               {submitting ? 'Verifying...' : 'Confirm Payment'}
@@ -159,20 +154,20 @@ const Payment = () => {
           </form>
         </div>
 
-        <div className="info-card">
-          <h4>⚠️ Important Notes</h4>
-          <ul>
-            <li>Each UPI reference ID can only be used once</li>
-            <li>Payment verification may take a few moments</li>
-            <li>Keep your payment receipt until verification is complete</li>
-            <li>Contact vendor if payment is not verified within 5 minutes</li>
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-xl shadow-lg p-6 mb-6">
+          <h4 className="text-lg font-bold text-yellow-900 mb-3">⚠️ Important Notes</h4>
+          <ul className="space-y-2 text-yellow-900">
+            <li className="flex items-start gap-2"><span>•</span><span>Each UPI reference ID can only be used once</span></li>
+            <li className="flex items-start gap-2"><span>•</span><span>Payment verification may take a few moments</span></li>
+            <li className="flex items-start gap-2"><span>•</span><span>Keep your payment receipt until verification is complete</span></li>
+            <li className="flex items-start gap-2"><span>•</span><span>Contact vendor if payment is not verified within 5 minutes</span></li>
           </ul>
         </div>
 
-        <div className="actions">
+        <div className="flex justify-center">
           <button
             onClick={() => navigate('/student/queue', { state: { jobId } })}
-            className="btn btn-outline"
+            className="px-8 py-3 bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transition-all"
           >
             Cancel
           </button>
