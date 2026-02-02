@@ -2,11 +2,15 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB Atlas connected");
+    const mongoURI = process.env.MONGO_URI || "mongodb://localhost:27017/printflow";
+    await mongoose.connect(mongoURI);
+    console.log("✅ MongoDB connected");
   } catch (error) {
     console.error("❌ MongoDB connection failed", error.message);
-    process.exit(1);
+    // Don't exit in development, allow server to start without DB for testing
+    if (process.env.NODE_ENV === "production") {
+      process.exit(1);
+    }
   }
 };
 

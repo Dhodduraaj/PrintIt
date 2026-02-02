@@ -15,8 +15,25 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000', {
-      transports: ['websocket'],
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    
+    const newSocket = io(API_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+    });
+
+    newSocket.on('connect', () => {
+      console.log('✅ Socket.IO connected');
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('❌ Socket.IO disconnected');
+    });
+
+    newSocket.on('connect_error', (error) => {
+      console.warn('⚠️ Socket.IO connection error:', error.message);
     });
 
     setSocket(newSocket);
