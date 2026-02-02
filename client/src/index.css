@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Global font + rendering */
+@layer base {
+  html {
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
