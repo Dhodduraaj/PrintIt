@@ -42,7 +42,7 @@ exports.approveJob = async (req, res) => {
     job.status = "printing";
     await job.save();
 
-    // Emit update
+    // Emit update and recalculate queue positions
     const io = req.app.get("io");
     if (io) {
       const updatedJob = await PrintJob.findById(job._id).populate(
@@ -53,6 +53,18 @@ exports.approveJob = async (req, res) => {
       io.emit("jobStatusUpdate", {
         jobId: job._id,
         status: "printing",
+      });
+
+      // Recalculate and emit queue positions for all waiting/printing jobs
+      const queueJobs = await PrintJob.find({
+        status: { $in: ["waiting", "printing"] },
+      }).sort({ createdAt: 1 });
+
+      queueJobs.forEach((queueJob, index) => {
+        io.emit("queueUpdate", {
+          jobId: queueJob._id.toString(),
+          queuePosition: index + 1,
+        });
       });
     }
 
@@ -78,7 +90,7 @@ exports.completeJob = async (req, res) => {
     job.status = "done";
     await job.save();
 
-    // Emit update
+    // Emit update and recalculate queue positions
     const io = req.app.get("io");
     if (io) {
       const updatedJob = await PrintJob.findById(job._id).populate(
@@ -89,6 +101,18 @@ exports.completeJob = async (req, res) => {
       io.emit("jobStatusUpdate", {
         jobId: job._id,
         status: "done",
+      });
+
+      // Recalculate and emit queue positions for all remaining waiting/printing jobs
+      const queueJobs = await PrintJob.find({
+        status: { $in: ["waiting", "printing"] },
+      }).sort({ createdAt: 1 });
+
+      queueJobs.forEach((queueJob, index) => {
+        io.emit("queueUpdate", {
+          jobId: queueJob._id.toString(),
+          queuePosition: index + 1,
+        });
       });
     }
 

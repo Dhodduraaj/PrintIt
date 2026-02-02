@@ -35,14 +35,6 @@ const UserRequestDashboard = () => {
 
     const handleJobStatusUpdate = (data) => {
       setLiveRequests((prev) => {
-        const updated = prev
-          .map((req) =>
-            req._id === data.jobId
-              ? { ...req, status: data.status }
-              : req
-          )
-          .filter((req) => ["pending", "waiting", "printing"].includes(req.status));
-
         // If status changed to "done", move to history
         if (data.status === "done") {
           const completedJob = prev.find((req) => req._id === data.jobId);
@@ -51,11 +43,18 @@ const UserRequestDashboard = () => {
               { ...completedJob, status: "done" },
               ...prevHistory,
             ]);
-            if (data.status === "done") {
-              toast.success("Your print is ready for pickup! ✅");
-            }
+            toast.success("Your print is ready for pickup! ✅");
           }
         }
+
+        // Update status and filter out non-live requests
+        const updated = prev
+          .map((req) =>
+            req._id === data.jobId
+              ? { ...req, status: data.status }
+              : req
+          )
+          .filter((req) => ["pending", "waiting", "printing"].includes(req.status));
 
         return updated;
       });
