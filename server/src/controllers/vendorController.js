@@ -7,6 +7,7 @@ const {
   setServiceStatus,
 } = require("../services/serviceStatus");
 const { sendPickupNotification } = require("../services/smsService");
+const { sendPickupNotification } = require("../services/smsService");
 
 exports.getJobs = async (req, res) => {
   try {
@@ -139,9 +140,30 @@ exports.completeJob = async (req, res) => {
       console.warn(`⚠️ No mobile number found for student ${populatedJob.student?._id}. SMS not sent.`);
     }
 
+    // Populate student info for SMS and socket events
+    const populatedJob = await PrintJob.findById(job._id).populate(
+      "student",
+      "name email mobileNumber",
+    );
+
+    // Send SMS notification to student (non-blocking)
+    if (populatedJob.student?.mobileNumber) {
+      sendPickupNotification({
+        to: populatedJob.student.mobileNumber,
+        studentName: populatedJob.student.name,
+        job: populatedJob,
+      }).catch((err) => {
+        // Log but don't fail the request if SMS fails
+        console.error("Failed to send pickup SMS:", err);
+      });
+    } else {
+      console.warn(`⚠️ No mobile number found for student ${populatedJob.student?._id}. SMS not sent.`);
+    }
+
     // Emit update and recalculate queue positions
     const io = req.app.get("io");
     if (io) {
+      io.emit("jobUpdated", populatedJob);
       io.emit("jobUpdated", populatedJob);
       io.emit("jobStatusUpdate", {
         jobId: job._id,
@@ -152,7 +174,8 @@ exports.completeJob = async (req, res) => {
         status: "done",
       });
 
-    res.json({ message: "Job marked as completed", job });
+    res.json({ message: "Job marked as completed", job: populatedJob });
+    res.json({ message: "Job marked as completed", job: populatedJob });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
