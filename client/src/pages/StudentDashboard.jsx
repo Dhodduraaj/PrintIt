@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
@@ -86,11 +87,12 @@ const StudentDashboard = () => {
         },
       });
 
+      toast.success("Document uploaded successfully! 🎉");
       navigate("/student/queue", { state: { jobId: response.data.jobId } });
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Upload failed. Please try again.",
-      );
+      const errorMessage = err.response?.data?.message || "Upload failed. Please try again.";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }

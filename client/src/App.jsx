@@ -4,6 +4,7 @@ import {
   Route,
   useLocation,
 } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SocketProvider } from "./contexts/SocketContext";
 import Navbar from "./components/Navbar";
@@ -89,6 +90,49 @@ function App() {
     <AuthProvider>
       <SocketProvider>
         <Router>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3000,
+              style: {
+                background: '#7A2FBF',
+                color: '#fff',
+                fontWeight: '500',
+                borderRadius: '12px',
+                padding: '16px',
+                boxShadow: '0 10px 25px rgba(122, 47, 191, 0.3)',
+              },
+              success: {
+                duration: 3000,
+                style: {
+                  background: 'linear-gradient(135deg, #7A2FBF 0%, #9B4DFF 100%)',
+                },
+                iconTheme: {
+                  primary: '#fff',
+                  secondary: '#7A2FBF',
+                },
+              },
+              error: {
+                duration: 4000,
+                style: {
+                  background: 'linear-gradient(135deg, #991b1b 0%, #dc2626 100%)',
+                },
+                iconTheme: {
+                  primary: '#fff',
+                  secondary: '#991b1b',
+                },
+              },
+              loading: {
+                style: {
+                  background: 'linear-gradient(135deg, #4B157A 0%, #7A2FBF 100%)',
+                },
+                iconTheme: {
+                  primary: '#fff',
+                  secondary: '#4B157A',
+                },
+              },
+            }}
+          />
           <AppContent />
         </Router>
       </SocketProvider>
