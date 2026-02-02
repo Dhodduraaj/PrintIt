@@ -7,6 +7,7 @@ import {
 import { AuthProvider } from "./contexts/AuthContext";
 import { SocketProvider } from "./contexts/SocketContext";
 import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Pages
@@ -29,9 +30,9 @@ function AppContent() {
   const shouldHideNavbar = hideNavbarRoutes.includes(location.pathname);
 
   return (
-    <div className="app">
+    <div className="app min-h-screen flex flex-col">
       {!shouldHideNavbar && <Navbar />}
-      <main className="main-content">
+      <main className="main-content flex-1">
         <Routes>
           <Route path="/" element={<Landing />} />
 
@@ -80,6 +81,7 @@ function AppContent() {
           />
         </Routes>
       </main>
+      {!shouldHideNavbar && <Footer />}
     </div>
   );
 }
