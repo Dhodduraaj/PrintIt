@@ -57,16 +57,17 @@ const printJobSchema = new mongoose.Schema(
 );
 
 // Generate token number before saving
-printJobSchema.pre("save", async function (next) {
-  try {
-    if (!this.tokenNumber) {
-      const PrintJobModel = mongoose.model("PrintJob");
-      const lastJob = await PrintJobModel.findOne().sort({ tokenNumber: -1 }).lean();
-      this.tokenNumber = lastJob && lastJob.tokenNumber ? lastJob.tokenNumber + 1 : 1000;
-    }
-    next();
-  } catch (error) {
-    next(error);
+printJobSchema.pre("save", async function () {
+  // IMPORTANT: In mongoose async middleware, do NOT use `next`.
+  // Returning/awaiting a promise is the correct pattern.
+  if (!this.tokenNumber) {
+    const lastJob = await this.constructor
+      .findOne()
+      .sort({ tokenNumber: -1 })
+      .select("tokenNumber")
+      .lean();
+
+    this.tokenNumber = lastJob?.tokenNumber ? lastJob.tokenNumber + 1 : 1000;
   }
 });
 
