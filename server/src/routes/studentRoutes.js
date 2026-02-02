@@ -5,6 +5,8 @@ const {
   getJobStatus,
   getLatestJob,
   getServiceStatus,
+  getAllRequests,
+  clearRequestHistory,
 } = require("../controllers/studentController");
 const handleFileUpload = require("../middleware/uploadHandler");
 
@@ -19,5 +21,9 @@ router.post("/upload", handleFileUpload("file"), uploadDocument);
 router.get("/job/:jobId", getJobStatus);
 router.get("/latest-job", getLatestJob);
 router.get("/service-status", getServiceStatus);
+
+// User Requests Dashboard routes
+router.get("/requests/all", getAllRequests);
+router.delete("/requests/history", clearRequestHistory);
 
 module.exports = router;
