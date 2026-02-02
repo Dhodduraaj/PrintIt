@@ -3,12 +3,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const generateToken = (user) => {
-  const jwtSecret = process.env.JWT_SECRET || "printflow-secret-key-change-in-production";
-  return jwt.sign(
-    { id: user._id, role: user.role },
-    jwtSecret,
-    { expiresIn: "7d" }
-  );
+  const jwtSecret =
+    process.env.JWT_SECRET || "printflow-secret-key-change-in-production";
+  return jwt.sign({ id: user._id, role: user.role }, jwtSecret, {
+    expiresIn: "7d",
+  });
 };
 
 exports.studentRegister = async (req, res) => {
@@ -53,7 +52,9 @@ exports.studentLogin = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ email, role: "STUDENT" });
@@ -85,7 +86,9 @@ exports.vendorLogin = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ email, role: "VENDOR" });
@@ -99,6 +102,42 @@ exports.vendorLogin = async (req, res) => {
     }
 
     res.json({
+      token: generateToken(user),
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role.toLowerCase(),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.vendorRegister = async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const exists = await User.findOne({ email });
+    if (exists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      name,
+      email,
+      password: hashed,
+      role: "VENDOR",
+    });
+
+    res.status(201).json({
       token: generateToken(user),
       user: {
         id: user._id,
