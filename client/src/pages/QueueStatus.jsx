@@ -15,6 +15,77 @@ const QueueStatus = () => {
   const [job, setJob] = useState(null);
   const [queuePosition, setQueuePosition] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [processingPayment, setProcessingPayment] = useState(false);
+
+  const handleRetryPayment = async () => {
+    if (!job) return;
+
+    setProcessingPayment(true);
+    try {
+      // Create Razorpay order
+      const orderResponse = await api.post("/api/payment/create-order", {
+        amount: job.amount,
+        jobId: job._id,
+      });
+
+      const { orderId, amount, currency, keyId } = orderResponse.data;
+
+      // Razorpay checkout options
+      const options = {
+        key: keyId,
+        amount: amount,
+        currency: currency,
+        name: "PrintFlow",
+        description: "Print Job Payment",
+        order_id: orderId,
+        handler: async function (response) {
+          try {
+            // Verify payment
+            const verifyResponse = await api.post(
+              "/api/payment/verify-payment",
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                jobId: job._id,
+              },
+            );
+
+            if (verifyResponse.data.success) {
+              toast.success("Payment successful! 🎉");
+              // Refresh job status
+              fetchJobStatus();
+            }
+          } catch (err) {
+            toast.error("Payment verification failed");
+            console.error(err);
+          } finally {
+            setProcessingPayment(false);
+          }
+        },
+        prefill: {
+          name: user?.name,
+          email: user?.email,
+        },
+        theme: {
+          color: "#7A2FBF",
+        },
+        modal: {
+          ondismiss: function () {
+            toast.error("Payment cancelled");
+            setProcessingPayment(false);
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (err) {
+      toast.error("Failed to initiate payment");
+      console.error(err);
+      setProcessingPayment(false);
+    }
+  };
 
   useEffect(() => {
     if (!jobId) {
@@ -32,7 +103,9 @@ const QueueStatus = () => {
         setJob(data.job);
         setQueuePosition(data.queuePosition);
         if (data.queuePosition <= 3 && data.queuePosition > 0) {
-          toast.success(`You're #${data.queuePosition} in queue! Almost there! 🚀`);
+          toast.success(
+            `You're #${data.queuePosition} in queue! Almost there! 🚀`,
+          );
         }
       }
     });
@@ -40,7 +113,7 @@ const QueueStatus = () => {
     socket.on("jobStatusUpdate", (data) => {
       if (data.jobId === job?._id) {
         setJob((prev) => ({ ...prev, status: data.status }));
-        
+
         if (data.status === "printing") {
           toast.info("Your document is being printed! 🖨️");
         } else if (data.status === "done") {
@@ -49,9 +122,18 @@ const QueueStatus = () => {
       }
     });
 
+    socket.on("paymentVerified", (data) => {
+      if (data._id === job?._id) {
+        setJob(data);
+        toast.success("Payment verified! You're in the queue now! 🎉");
+        fetchJobStatus();
+      }
+    });
+
     return () => {
       socket.off("queueUpdate");
       socket.off("jobStatusUpdate");
+      socket.off("paymentVerified");
     };
   }, [socket, job]);
 
@@ -138,9 +220,117 @@ const QueueStatus = () => {
     );
   }
 
+  // Render for Payment Pending status
+  if (job.status === "pending" && !job.paymentVerified) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-4xl">⏳</span>
+              </div>
+              <h2 className="text-3xl font-bold text-orange-600 mb-2">
+                Payment Pending
+              </h2>
+              <p className="text-gray-600">
+                Your document has been uploaded but payment is not yet completed
+              </p>
+            </div>
+
+            {/* Job Details */}
+            <div className="bg-gray-50 rounded-xl p-6 mb-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">
+                Document Details
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Token Number:</span>
+                  <span className="text-2xl font-bold text-purple-600">
+                    {job.tokenNumber}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Document:</span>
+                  <span className="text-gray-900 font-semibold">
+                    {job.fileName}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Pages:</span>
+                  <span className="text-gray-900 font-semibold">
+                    {job.pageCount} × {job.copies} copies
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-gray-600">Type:</span>
+                  <span className="text-gray-900 font-semibold">
+                    {job.printType === "color" ? "Color" : "Black & White"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-600 font-medium">Amount:</span>
+                  <span className="text-2xl font-bold text-green-600">
+                    ₹{job.amount}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Status Alert */}
+            <div className="bg-orange-50 border-l-4 border-orange-500 rounded-lg p-6 mb-6">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">⚠️</span>
+                <div>
+                  <h4 className="text-lg font-bold text-orange-900 mb-2">
+                    Action Required
+                  </h4>
+                  <p className="text-orange-800 mb-3">
+                    You need to complete the payment to join the print queue.
+                    Your document will not be printed until payment is verified.
+                  </p>
+                  <p className="text-sm text-orange-700">
+                    Payment Status:{" "}
+                    <span className="font-bold">Not Verified</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => navigate("/student/dashboard")}
+                className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-lg transition-all"
+              >
+                Cancel & Upload New
+              </button>
+              <button
+                onClick={handleRetryPayment}
+                disabled={processingPayment}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold rounded-lg transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {processingPayment ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="animate-spin">⏳</span> Processing...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <span>💳</span> Complete Payment
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Token Number Card */}
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-2xl p-8 mb-8 text-center">
           <h2 className="text-2xl font-bold text-white mb-4">
             Your Token Number
@@ -166,6 +356,23 @@ const QueueStatus = () => {
           </div>
         </div>
 
+        {/* Payment Status Badge */}
+        {job.paymentVerified && (
+          <div className="bg-green-50 border-l-4 border-green-500 rounded-xl shadow-md p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">✅</span>
+              <div>
+                <h4 className="font-bold text-green-900">Payment Verified</h4>
+                <p className="text-sm text-green-700">
+                  Amount: ₹{job.amount} | Transaction ID:{" "}
+                  {job.upiReferenceId?.substring(0, 12)}...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Queue Information */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
           <h3 className="text-2xl font-bold text-purple-900 mb-6">
             Queue Information
@@ -201,6 +408,12 @@ const QueueStatus = () => {
               <span className="text-gray-700 font-medium">Copies:</span>
               <span className="text-gray-900 font-semibold">{job.copies}</span>
             </div>
+            <div className="flex justify-between py-3 border-b border-gray-200">
+              <span className="text-gray-700 font-medium">Amount Paid:</span>
+              <span className="text-gray-900 font-bold text-green-600">
+                ₹{job.amount}
+              </span>
+            </div>
             <div className="flex justify-between py-3">
               <span className="text-gray-700 font-medium">Status:</span>
               <span
@@ -220,6 +433,7 @@ const QueueStatus = () => {
           </div>
         </div>
 
+        {/* Done Status */}
         {job.status === "done" && (
           <div className="bg-green-50 border-l-4 border-green-500 rounded-xl shadow-lg p-6 mb-6">
             <h3 className="text-xl font-bold text-green-900 mb-3">

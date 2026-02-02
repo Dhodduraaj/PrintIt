@@ -25,6 +25,10 @@ const printJobSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
+    pageRange: {
+      type: String,
+      default: null,
+    },
     printType: {
       type: String,
       enum: ["black-white", "color"],
@@ -35,6 +39,31 @@ const printJobSchema = new mongoose.Schema(
       default: 1,
       min: 1,
       max: 10,
+    },
+    duplex: {
+      type: String,
+      enum: [
+        "single-sided",
+        "double-sided",
+        "double-sided-flip-long",
+        "double-sided-flip-short",
+      ],
+      default: "single-sided",
+    },
+    paperSize: {
+      type: String,
+      enum: ["A4", "A3", "Letter", "Legal"],
+      default: "A4",
+    },
+    orientation: {
+      type: String,
+      enum: ["portrait", "landscape"],
+      default: "portrait",
+    },
+    pagesPerSheet: {
+      type: Number,
+      enum: [1, 2, 4, 6, 9],
+      default: 1,
     },
     tokenNumber: {
       type: Number,
@@ -58,7 +87,7 @@ const printJobSchema = new mongoose.Schema(
       default: 0,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Generate token number before saving
