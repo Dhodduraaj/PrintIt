@@ -89,6 +89,26 @@ const VendorDashboard = () => {
     }
   };
 
+  const handleDeleteDoneHistory = async () => {
+    const doneCount = jobs.filter((j) => j.status === "done").length;
+    if (doneCount === 0) {
+      toast("No completed jobs to delete.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Are you sure you want to delete all ${doneCount} completed job(s)? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.delete("/api/vendor/jobs/done-history");
+      setJobs((prev) => prev.filter((j) => j.status !== "done"));
+      toast.success("Done history deleted.");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete done history");
+    }
+  };
+
   const handleDownload = async (job) => {
     try {
       const response = await api.get(`/api/vendor/jobs/${job._id}/download`, {
@@ -198,7 +218,7 @@ const VendorDashboard = () => {
           </div>
         </div>
 
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-6 overflow-x-auto pb-2">
           <button
             className={`px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap ${filter === "all" ? "bg-purple-600 text-white shadow-lg" : "bg-white text-purple-600 hover:bg-purple-50"}`}
             onClick={() => setFilter("all")}
@@ -217,6 +237,15 @@ const VendorDashboard = () => {
           >
             Printing
           </button>
+          {filter === "all" && (
+            <button
+              type="button"
+              onClick={handleDeleteDoneHistory}
+              className="px-6 py-3 rounded-lg font-semibold transition-all whitespace-nowrap bg-red-600 text-white hover:bg-red-700 shadow-lg"
+            >
+              Delete Done History
+            </button>
+          )}
         </div>
 
         <div className="space-y-4">

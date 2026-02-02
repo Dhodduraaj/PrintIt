@@ -1,24 +1,25 @@
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  useLocation,
-} from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import {
+    Route,
+    BrowserRouter as Router,
+    Routes,
+    useLocation,
+} from "react-router-dom";
+import Footer from "./components/Footer";
+import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SocketProvider } from "./contexts/SocketContext";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 // Pages
-import Landing from "./pages/Landing";
-import StudentLogin from "./pages/StudentLogin";
-import VendorLogin from "./pages/VendorLogin";
-import StudentDashboard from "./pages/StudentDashboard";
-import QueueStatus from "./pages/QueueStatus";
-import VendorDashboard from "./pages/VendorDashboard";
 import Admin from "./pages/Admin";
+import Landing from "./pages/Landing";
+import QueueStatus from "./pages/QueueStatus";
+import StudentDashboard from "./pages/StudentDashboard";
+import StudentLogin from "./pages/StudentLogin";
+import UserRequestDashboard from "./pages/UserRequestDashboard";
+import VendorDashboard from "./pages/VendorDashboard";
+import VendorLogin from "./pages/VendorLogin";
 
 function AppContent() {
   const location = useLocation();
@@ -57,6 +58,14 @@ function AppContent() {
             element={
               <ProtectedRoute requiredRole="student">
                 <QueueStatus />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/student/requests"
+            element={
+              <ProtectedRoute requiredRole="student">
+                <UserRequestDashboard />
               </ProtectedRoute>
             }
           />

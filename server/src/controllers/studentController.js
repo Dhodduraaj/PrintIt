@@ -148,4 +148,82 @@ exports.getServiceStatus = (req, res) => {
   res.json({ isOpen: getServiceStatusValue() });
 };
 
+// Fetch all user requests with categorization (Live vs History)
+exports.getAllRequests = async (req, res) => {
+  try {
+    const liveStatusList = ["pending", "waiting", "printing"];
+    const historyStatusList = ["done"];
+
+    // Fetch live requests (sorted by oldest first - FIFO)
+    const liveRequests = await PrintJob.find({
+      student: req.user._id,
+      status: { $in: liveStatusList },
+    })
+      .sort({ createdAt: 1 })
+      .populate("student", "name email");
+
+    // Fetch history requests (sorted by most recent first)
+    const historyRequests = await PrintJob.find({
+      student: req.user._id,
+      status: { $in: historyStatusList },
+    })
+      .sort({ createdAt: -1 })
+      .populate("student", "name email");
+
+    // Enrich live requests with queue position
+    const enrichedLiveRequests = await Promise.all(
+      liveRequests.map(async (job) => {
+        const queuePosition = await PrintJob.countDocuments({
+          status: { $in: ["waiting", "printing"] },
+          createdAt: { $lt: job.createdAt },
+        }) + (job.status === "waiting" || job.status === "printing" ? 1 : 0);
+
+        return {
+          ...job.toObject(),
+          queuePosition,
+        };
+      })
+    );
+
+    res.json({
+      liveRequests: enrichedLiveRequests,
+      historyRequests,
+      summary: {
+        liveCount: enrichedLiveRequests.length,
+        historyCount: historyRequests.length,
+      },
+    });
+  } catch (err) {
+    console.error("Error fetching all requests:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Clear completed/done requests (history only, not live requests)
+exports.clearRequestHistory = async (req, res) => {
+  try {
+    const { confirmed } = req.body;
+
+    if (!confirmed) {
+      return res.status(400).json({
+        message: "Confirmation required to clear history",
+      });
+    }
+
+    // Only delete completed requests (done status)
+    const result = await PrintJob.deleteMany({
+      student: req.user._id,
+      status: "done",
+    });
+
+    res.json({
+      message: `Cleared ${result.deletedCount} completed request(s) from history`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    console.error("Error clearing request history:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // submitPayment removed – jobs now enter the waiting queue immediately without a payment step

@@ -42,7 +42,7 @@ exports.approveJob = async (req, res) => {
     job.status = "printing";
     await job.save();
 
-    // Emit update
+    // Emit update and recalculate queue positions
     const io = req.app.get("io");
     if (io) {
       const updatedJob = await PrintJob.findById(job._id).populate(
@@ -53,6 +53,18 @@ exports.approveJob = async (req, res) => {
       io.emit("jobStatusUpdate", {
         jobId: job._id,
         status: "printing",
+      });
+
+      // Recalculate and emit queue positions for all waiting/printing jobs
+      const queueJobs = await PrintJob.find({
+        status: { $in: ["waiting", "printing"] },
+      }).sort({ createdAt: 1 });
+
+      queueJobs.forEach((queueJob, index) => {
+        io.emit("queueUpdate", {
+          jobId: queueJob._id.toString(),
+          queuePosition: index + 1,
+        });
       });
     }
 
@@ -78,7 +90,7 @@ exports.completeJob = async (req, res) => {
     job.status = "done";
     await job.save();
 
-    // Emit update
+    // Emit update and recalculate queue positions
     const io = req.app.get("io");
     if (io) {
       const updatedJob = await PrintJob.findById(job._id).populate(
@@ -89,6 +101,18 @@ exports.completeJob = async (req, res) => {
       io.emit("jobStatusUpdate", {
         jobId: job._id,
         status: "done",
+      });
+
+      // Recalculate and emit queue positions for all remaining waiting/printing jobs
+      const queueJobs = await PrintJob.find({
+        status: { $in: ["waiting", "printing"] },
+      }).sort({ createdAt: 1 });
+
+      queueJobs.forEach((queueJob, index) => {
+        io.emit("queueUpdate", {
+          jobId: queueJob._id.toString(),
+          queuePosition: index + 1,
+        });
       });
     }
 
@@ -185,6 +209,48 @@ exports.deleteJob = async (req, res) => {
     }
 
     res.json({ message: "Job deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteDoneHistory = async (req, res) => {
+  try {
+    const doneJobs = await PrintJob.find({ status: "done" });
+    const io = req.app.get("io");
+    const jobIds = [];
+
+    for (const job of doneJobs) {
+      if (job.gridFsFileId) {
+        try {
+          const bucket = getBucket();
+          await bucket.delete(job.gridFsFileId);
+        } catch (err) {
+          console.error("Error deleting GridFS file:", err.message || err);
+        }
+      }
+      if (job.filePath) {
+        const filePath = path.join(__dirname, "../../", job.filePath);
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (err) {
+            console.error("Error deleting local file:", err.message || err);
+          }
+        }
+      }
+      await job.deleteOne();
+      jobIds.push(job._id.toString());
+      if (io) {
+        io.emit("jobDeleted", { jobId: job._id });
+      }
+    }
+
+    res.json({
+      message: "Done history deleted successfully",
+      deleted: jobIds.length,
+      jobIds,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
