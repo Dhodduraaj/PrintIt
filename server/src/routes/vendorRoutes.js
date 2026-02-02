@@ -6,6 +6,8 @@ const {
   completeJob,
   downloadFile,
   deleteJob,
+  getServiceStatus,
+  updateServiceStatus,
 } = require("../controllers/vendorController");
 const path = require("path");
 const fs = require("fs");
@@ -21,5 +23,7 @@ router.post("/jobs/:jobId/approve", approveJob);
 router.post("/jobs/:jobId/complete", completeJob);
 router.get("/jobs/:jobId/download", downloadFile);
 router.delete("/jobs/:jobId", deleteJob);
+router.get("/service/status", getServiceStatus);
+router.post("/service/status", updateServiceStatus);
 
 module.exports = router;

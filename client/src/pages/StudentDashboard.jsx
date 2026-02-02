@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
-import toast from "react-hot-toast";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
+import pcServiceDesktop from "../assets/pcservice1.png";
+import pcServiceMobile from "../assets/pcservice2.png";
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -20,6 +21,37 @@ const StudentDashboard = () => {
   });
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [serviceOpen, setServiceOpen] = useState(true);
+  const [statusLoading, setStatusLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await api.get("/api/student/service-status");
+        setServiceOpen(response.data.isOpen);
+      } catch (err) {
+        console.error("Error fetching service status:", err);
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+
+    fetchStatus();
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleStatusChange = ({ isOpen }) => {
+      setServiceOpen(isOpen);
+    };
+
+    socket.on("serviceStatusChanged", handleStatusChange);
+
+    return () => {
+      socket.off("serviceStatusChanged", handleStatusChange);
+    };
+  }, [socket]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -102,6 +134,44 @@ const StudentDashboard = () => {
       setUploading(false);
     }
   };
+
+  if (statusLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-xl text-purple-900 font-semibold">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!serviceOpen) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 py-6 flex items-center">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="bg-white rounded-xl shadow-lg p-6 border border-purple-100 text-center">
+            <h1 className="text-3xl font-bold text-purple-900 mb-4">
+              Service Not Available
+            </h1>
+            <p className="text-sm text-gray-600 mb-6">
+              The printing service is currently closed. Please check back later
+              when the vendor re-opens the service.
+            </p>
+            <div className="flex justify-center">
+              <img
+                src={pcServiceDesktop}
+                alt="Service not available"
+                className="hidden md:block max-w-xl w-full rounded-lg shadow-md"
+              />
+              <img
+                src={pcServiceMobile}
+                alt="Service not available"
+                className="block md:hidden max-w-xs w-full rounded-lg shadow-md"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 py-6">

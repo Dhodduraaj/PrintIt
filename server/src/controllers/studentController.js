@@ -1,6 +1,9 @@
 const PrintJob = require("../models/PrintJob");
 const User = require("../models/User");
 const { uploadToGridFS } = require("../services/fileStorage");
+const {
+  getServiceStatus: getServiceStatusValue,
+} = require("../services/serviceStatus");
 
 const getContentType = (mimetype, originalname) => {
   if (mimetype) return mimetype;
@@ -107,6 +110,10 @@ exports.getLatestJob = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+};
+
+exports.getServiceStatus = (req, res) => {
+  res.json({ isOpen: getServiceStatusValue() });
 };
 
 // submitPayment removed – jobs now enter the waiting queue immediately without a payment step

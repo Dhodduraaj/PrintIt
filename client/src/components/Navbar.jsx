@@ -1,10 +1,28 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../utils/api';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [serviceOpen, setServiceOpen] = useState(true);
+  const [isUpdatingService, setIsUpdatingService] = useState(false);
+
+  useEffect(() => {
+    const fetchStatus = async () => {
+      if (!user || user.role !== 'vendor') return;
+      try {
+        const res = await api.get('/api/vendor/service/status');
+        setServiceOpen(res.data.isOpen);
+      } catch (err) {
+        console.error('Failed to fetch service status', err);
+      }
+    };
+
+    fetchStatus();
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -12,18 +30,57 @@ const Navbar = () => {
     navigate('/');
   };
 
+  const handleToggleService = async () => {
+    if (!user || user.role !== 'vendor') return;
+
+    setIsUpdatingService(true);
+    try {
+      const res = await api.post('/api/vendor/service/status', {
+        isOpen: !serviceOpen,
+      });
+      setServiceOpen(res.data.isOpen);
+      toast.success(
+        res.data.isOpen
+          ? 'Service opened. Students can now submit jobs.'
+          : 'Service closed. Students will see service unavailable.'
+      );
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message || 'Failed to update service status'
+      );
+    } finally {
+      setIsUpdatingService(false);
+    }
+  };
+
   return (
     <nav className="bg-[#4F1C51] border-b border-[#2E1A4D] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
 
-          {/* Brand */}
-          <Link
-            to="/"
-            className="text-xl font-semibold text-white tracking-wide flex items-center gap-2"
-          >
-            🖨️ PrintFlow
-          </Link>
+          {/* Brand + Vendor Service Toggle */}
+          <div className="flex items-center gap-4">
+            {user?.role === 'vendor' && (
+              <button
+                onClick={handleToggleService}
+                disabled={isUpdatingService}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all duration-200 ${
+                  serviceOpen
+                    ? 'border-red-400 text-red-200 hover:bg-red-500 hover:text-white'
+                    : 'border-green-400 text-green-200 hover:bg-green-500 hover:text-white'
+                } disabled:opacity-60 disabled:cursor-not-allowed`}
+              >
+                {serviceOpen ? 'Close service' : 'Open service'}
+              </button>
+            )}
+
+            <Link
+              to="/"
+              className="text-xl font-semibold text-white tracking-wide flex items-center gap-2"
+            >
+              🖨️ PrintFlow
+            </Link>
+          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-6 text-sm">

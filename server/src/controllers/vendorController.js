@@ -2,6 +2,7 @@ const PrintJob = require("../models/PrintJob");
 const path = require("path");
 const fs = require("fs");
 const { downloadFromGridFS, getBucket } = require("../services/fileStorage");
+const { getServiceStatus, setServiceStatus } = require("../services/serviceStatus");
 
 exports.getJobs = async (req, res) => {
   try {
@@ -166,4 +167,25 @@ exports.deleteJob = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+};
+
+exports.getServiceStatus = (req, res) => {
+  res.json({ isOpen: getServiceStatus() });
+};
+
+exports.updateServiceStatus = (req, res) => {
+  const { isOpen } = req.body;
+
+  if (typeof isOpen !== "boolean") {
+    return res.status(400).json({ message: "isOpen must be a boolean" });
+  }
+
+  setServiceStatus(isOpen);
+
+  const io = req.app.get("io");
+  if (io) {
+    io.emit("serviceStatusChanged", { isOpen });
+  }
+
+  res.json({ isOpen });
 };
