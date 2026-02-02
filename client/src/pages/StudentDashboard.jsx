@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import pcServiceDesktop from "../assets/pcservice1.png";
+import pcServiceMobile from "../assets/pcservice2.png";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
-import pcServiceDesktop from "../assets/pcservice1.png";
-import pcServiceMobile from "../assets/pcservice2.png";
 
 const StudentDashboard = () => {
   const { user } = useAuth();
