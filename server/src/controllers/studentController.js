@@ -18,10 +18,11 @@ const getContentType = (mimetype, originalname) => {
 
 exports.uploadDocument = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "No files uploaded" });
     }
 
+    // Extract common parameters from body
     const {
       pageCount,
       pageRange,
@@ -33,51 +34,102 @@ exports.uploadDocument = async (req, res) => {
       pagesPerSheet,
     } = req.body;
 
-    if (!pageCount || !printType) {
-      return res
-        .status(400)
-        .json({ message: "Page count and print type are required" });
+    // Check if individual file parameters are provided
+    let hasIndividualParams = req.body.fileParams;
+
+    // Parse fileParams if it's a JSON string
+    if (typeof req.body.fileParams === "string") {
+      try {
+        hasIndividualParams = JSON.parse(req.body.fileParams);
+      } catch (parseErr) {
+        console.error("Error parsing fileParams:", parseErr);
+        return res
+          .status(400)
+          .json({ message: "Invalid file parameters format" });
+      }
     }
 
-    // Upload file to MongoDB GridFS
-    const gridFsFileId = await uploadToGridFS(req.file.buffer, {
-      originalFilename: req.file.originalname,
-      contentType: getContentType(req.file.mimetype, req.file.originalname),
-      studentId: req.user._id.toString(),
-    });
+    const createdJobs = [];
 
-    // Calculate amount
-    const pageRate = printType === "color" ? 5 : 2;
-    const calculatedAmount =
-      parseInt(pageCount) * pageRate * parseInt(copies || 1);
+    for (let i = 0; i < req.files.length; i++) {
+      const file = req.files[i];
 
-    const job = await PrintJob.create({
-      student: req.user._id,
-      fileName: req.file.originalname,
-      gridFsFileId,
-      pageCount: parseInt(pageCount),
-      pageRange: pageRange || null,
-      printType,
-      copies: parseInt(copies || 1),
-      duplex: duplex || "single-sided",
-      paperSize: paperSize || "A4",
-      orientation: orientation || "portrait",
-      pagesPerSheet: parseInt(pagesPerSheet || 1),
-      amount: calculatedAmount,
-      paymentVerified: false,
-      status: "pending", // Start as pending until payment verified
-    });
+      // Determine parameters for this specific file
+      let filePageCount = pageCount;
+      let filePageRange = pageRange;
+      let filePrintType = printType;
+      let fileCopies = copies;
+      let fileDuplex = duplex;
+      let filePaperSize = paperSize;
+      let fileOrientation = orientation;
+      let filePagesPerSheet = pagesPerSheet;
+
+      if (hasIndividualParams && hasIndividualParams[i]) {
+        const params = hasIndividualParams[i];
+        filePageCount = params.pageCount;
+        filePageRange = params.pageRange;
+        filePrintType = params.printType;
+        fileCopies = params.copies;
+        fileDuplex = params.duplex;
+        filePaperSize = params.paperSize;
+        fileOrientation = params.orientation;
+        filePagesPerSheet = params.pagesPerSheet;
+      }
+
+      if (!filePageCount || !filePrintType) {
+        return res
+          .status(400)
+          .json({
+            message: `Page count and print type are required for file ${i + 1}`,
+          });
+      }
+
+      // Upload file to MongoDB GridFS
+      const gridFsFileId = await uploadToGridFS(file.buffer, {
+        originalFilename: file.originalname,
+        contentType: getContentType(file.mimetype, file.originalname),
+        studentId: req.user._id.toString(),
+      });
+
+      // Calculate amount
+      const pageRate = filePrintType === "color" ? 5 : 2;
+      const calculatedAmount =
+        parseInt(filePageCount) * pageRate * parseInt(fileCopies || 1);
+
+      const job = await PrintJob.create({
+        student: req.user._id,
+        fileName: file.originalname,
+        gridFsFileId,
+        pageCount: parseInt(filePageCount),
+        pageRange: filePageRange || null,
+        printType: filePrintType,
+        copies: parseInt(fileCopies || 1),
+        duplex: fileDuplex || "single-sided",
+        paperSize: filePaperSize || "A4",
+        orientation: fileOrientation || "portrait",
+        pagesPerSheet: parseInt(filePagesPerSheet || 1),
+        amount: calculatedAmount,
+        paymentVerified: false,
+        status: "pending", // Start as pending until payment verified
+      });
+
+      createdJobs.push({
+        jobId: job._id,
+        fileName: file.originalname,
+        tokenNumber: job.tokenNumber,
+        amount: calculatedAmount,
+      });
+    }
 
     res.status(201).json({
-      message: "Document uploaded successfully. Please complete payment.",
-      jobId: job._id,
-      tokenNumber: job.tokenNumber,
-      amount: calculatedAmount,
+      message: `${req.files.length} document(s) uploaded successfully. Please complete payment.`,
+      jobs: createdJobs,
+      totalAmount: createdJobs.reduce((sum, job) => sum + job.amount, 0),
     });
   } catch (err) {
     console.error("Upload error:", err);
     res.status(500).json({
-      message: err.message || "Failed to upload document. Please try again.",
+      message: err.message || "Failed to upload document(s). Please try again.",
     });
   }
 };
@@ -173,16 +225,17 @@ exports.getAllRequests = async (req, res) => {
     // Enrich live requests with queue position
     const enrichedLiveRequests = await Promise.all(
       liveRequests.map(async (job) => {
-        const queuePosition = await PrintJob.countDocuments({
-          status: { $in: ["waiting", "printing"] },
-          createdAt: { $lt: job.createdAt },
-        }) + (job.status === "waiting" || job.status === "printing" ? 1 : 0);
+        const queuePosition =
+          (await PrintJob.countDocuments({
+            status: { $in: ["waiting", "printing"] },
+            createdAt: { $lt: job.createdAt },
+          })) + (job.status === "waiting" || job.status === "printing" ? 1 : 0);
 
         return {
           ...job.toObject(),
           queuePosition,
         };
-      })
+      }),
     );
 
     res.json({

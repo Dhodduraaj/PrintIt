@@ -96,7 +96,7 @@ const VendorDashboard = () => {
       return;
     }
     const confirmed = window.confirm(
-      `Are you sure you want to delete all ${doneCount} completed job(s)? This action cannot be undone.`
+      `Are you sure you want to delete all ${doneCount} completed job(s)? This action cannot be undone.`,
     );
     if (!confirmed) return;
 
@@ -105,7 +105,9 @@ const VendorDashboard = () => {
       setJobs((prev) => prev.filter((j) => j.status !== "done"));
       toast.success("Done history deleted.");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete done history");
+      toast.error(
+        err.response?.data?.message || "Failed to delete done history",
+      );
     }
   };
 
@@ -155,6 +157,23 @@ const VendorDashboard = () => {
   const filteredJobs = sortedJobs.filter((job) => {
     if (filter === "all") return true;
     return job.status === filter;
+  });
+
+  // Group jobs by UPI reference ID (same payment transaction)
+  const groupedJobs = filteredJobs.reduce((groups, job) => {
+    const key = job.upiReferenceId || job._id; // Group by payment ID, or use job ID if no payment
+    if (!groups[key]) {
+      groups[key] = [];
+    }
+    groups[key].push(job);
+    return groups;
+  }, {});
+
+  // Convert to array of groups sorted by first job's creation time
+  const jobGroups = Object.values(groupedJobs).sort((a, b) => {
+    const aTime = new Date(a[0].createdAt).getTime();
+    const bTime = new Date(b[0].createdAt).getTime();
+    return aTime - bTime;
   });
 
   const getStatusBadge = (status) => {
@@ -249,133 +268,200 @@ const VendorDashboard = () => {
         </div>
 
         <div className="space-y-4">
-          {filteredJobs.length === 0 ? (
+          {jobGroups.length === 0 ? (
             <div className="bg-white rounded-xl shadow-lg p-12 text-center">
               <p className="text-gray-500 text-lg">No jobs found</p>
             </div>
           ) : (
-            filteredJobs.map((job) => (
-              <div
-                key={job._id}
-                className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-4 mb-4">
-                      <h3 className="text-2xl font-bold text-purple-900">
-                        Token #{job.tokenNumber}
-                      </h3>
-                      <span
-                        className={`px-4 py-1 rounded-full text-sm font-semibold ${
-                          job.status === "waiting"
-                            ? "bg-purple-100 text-purple-700"
-                            : job.status === "printing"
-                              ? "bg-blue-100 text-blue-700"
-                              : job.status === "done"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-yellow-100 text-yellow-700"
-                        }`}
-                      >
-                        {getStatusText(job.status)}
-                      </span>
+            jobGroups.map((group) => {
+              const isMultiFile = group.length > 1;
+              const firstJob = group[0];
+
+              return (
+                <div
+                  key={firstJob.upiReferenceId || firstJob._id}
+                  className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all"
+                >
+                  {/* Group Header */}
+                  {isMultiFile && (
+                    <div className="mb-4 pb-3 border-b border-purple-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">📦</span>
+                          <div>
+                            <h3 className="text-lg font-bold text-purple-900">
+                              Batch Request - {group.length} Files
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              Student: {firstJob.student?.name || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        {firstJob.upiReferenceId && (
+                          <div className="text-right">
+                            <p className="text-xs text-gray-500">UPI Ref:</p>
+                            <code className="text-xs bg-gray-100 px-2 py-1 rounded">
+                              {firstJob.upiReferenceId}
+                            </code>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-2 text-sm text-gray-700">
-                      <p>
-                        <strong className="text-purple-900">Student:</strong>{" "}
-                        {job.student?.name || "N/A"}
-                      </p>
-                      <p>
-                        <strong className="text-purple-900">Document:</strong>{" "}
-                        {job.fileName}
-                      </p>
-                      <p>
-                        <strong className="text-purple-900">Page Range:</strong>{" "}
-                        {job.pageRange || "All pages"}
-                      </p>
-                      <p>
-                        <strong className="text-purple-900">Pages:</strong>{" "}
-                        {job.pageCount} × {job.copies} copies
-                      </p>
-                      <p>
-                        <strong className="text-purple-900">Print Type:</strong>{" "}
-                        {job.printType === "color" ? "Color" : "Black & White"}
-                      </p>
-                      <p>
-                        <strong className="text-purple-900">Sides:</strong>{" "}
-                        {job.duplex === "single-sided"
-                          ? "Single Sided"
-                          : job.duplex === "double-sided"
-                            ? "Double Sided"
-                            : job.duplex === "double-sided-flip-long"
-                              ? "Double Sided (Flip Long)"
-                              : job.duplex === "double-sided-flip-short"
-                                ? "Double Sided (Flip Short)"
-                                : "Single Sided"}
-                      </p>
-                      <p>
-                        <strong className="text-purple-900">Paper Size:</strong>{" "}
-                        {job.paperSize || "A4"}
-                      </p>
-                      <p>
-                        <strong className="text-purple-900">
-                          Orientation:
-                        </strong>{" "}
-                        {job.orientation === "portrait"
-                          ? "Portrait"
-                          : "Landscape"}
-                      </p>
-                      <p>
-                        <strong className="text-purple-900">
-                          Pages Per Sheet:
-                        </strong>{" "}
-                        {job.pagesPerSheet || 1} Page
-                        {job.pagesPerSheet > 1 ? "s" : ""}
-                      </p>
-                      {job.upiReferenceId && (
-                        <p className="col-span-2">
-                          <strong className="text-purple-900">UPI Ref:</strong>{" "}
-                          <code className="bg-gray-100 px-2 py-1 rounded">
-                            {job.upiReferenceId}
-                          </code>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3 lg:min-w-[200px]">
-                    {job.status === "waiting" && (
-                      <button
-                        onClick={() => handleApprove(job._id)}
-                        className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all shadow-lg"
+                  )}
+
+                  {/* Jobs in the group */}
+                  <div className="space-y-4">
+                    {group.map((job, index) => (
+                      <div
+                        key={job._id}
+                        className={`${isMultiFile ? "bg-purple-50 rounded-lg p-4 border border-purple-200" : ""}`}
                       >
-                        ✅ Approve & Print
-                      </button>
-                    )}
-                    {job.status === "printing" && (
-                      <button
-                        onClick={() => handleMarkDone(job._id)}
-                        className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all shadow-lg"
-                      >
-                        ✓ Mark as Done
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleDownload(job)}
-                      className="text-center px-6 py-2 bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transition-all"
-                    >
-                      📥 Download
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(job._id)}
-                      className="text-center px-6 py-2 bg-red-600 text-white hover:bg-red-700 font-semibold rounded-lg transition-all"
-                    >
-                      🗑 Delete
-                    </button>
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-4 mb-4">
+                              {isMultiFile && (
+                                <span className="text-sm font-bold text-purple-600 bg-purple-100 px-2 py-1 rounded">
+                                  #{index + 1}
+                                </span>
+                              )}
+                              <h3 className="text-2xl font-bold text-purple-900">
+                                Token #{job.tokenNumber}
+                              </h3>
+                              <span
+                                className={`px-4 py-1 rounded-full text-sm font-semibold ${
+                                  job.status === "waiting"
+                                    ? "bg-purple-100 text-purple-700"
+                                    : job.status === "printing"
+                                      ? "bg-blue-100 text-blue-700"
+                                      : job.status === "done"
+                                        ? "bg-green-100 text-green-700"
+                                        : "bg-yellow-100 text-yellow-700"
+                                }`}
+                              >
+                                {getStatusText(job.status)}
+                              </span>
+                            </div>
+                            <div className="grid md:grid-cols-2 gap-2 text-sm text-gray-700">
+                              {!isMultiFile && (
+                                <p>
+                                  <strong className="text-purple-900">
+                                    Student:
+                                  </strong>{" "}
+                                  {job.student?.name || "N/A"}
+                                </p>
+                              )}
+                              <p className={!isMultiFile ? "" : "col-span-2"}>
+                                <strong className="text-purple-900">
+                                  Document:
+                                </strong>{" "}
+                                {job.fileName}
+                              </p>
+                              <p>
+                                <strong className="text-purple-900">
+                                  Page Range:
+                                </strong>{" "}
+                                {job.pageRange || "All pages"}
+                              </p>
+                              <p>
+                                <strong className="text-purple-900">
+                                  Pages:
+                                </strong>{" "}
+                                {job.pageCount} × {job.copies} copies
+                              </p>
+                              <p>
+                                <strong className="text-purple-900">
+                                  Print Type:
+                                </strong>{" "}
+                                {job.printType === "color"
+                                  ? "Color"
+                                  : "Black & White"}
+                              </p>
+                              <p>
+                                <strong className="text-purple-900">
+                                  Sides:
+                                </strong>{" "}
+                                {job.duplex === "single-sided"
+                                  ? "Single Sided"
+                                  : job.duplex === "double-sided"
+                                    ? "Double Sided"
+                                    : job.duplex === "double-sided-flip-long"
+                                      ? "Double Sided (Flip Long)"
+                                      : job.duplex === "double-sided-flip-short"
+                                        ? "Double Sided (Flip Short)"
+                                        : "Single Sided"}
+                              </p>
+                              <p>
+                                <strong className="text-purple-900">
+                                  Paper Size:
+                                </strong>{" "}
+                                {job.paperSize || "A4"}
+                              </p>
+                              <p>
+                                <strong className="text-purple-900">
+                                  Orientation:
+                                </strong>{" "}
+                                {job.orientation === "portrait"
+                                  ? "Portrait"
+                                  : "Landscape"}
+                              </p>
+                              <p>
+                                <strong className="text-purple-900">
+                                  Pages Per Sheet:
+                                </strong>{" "}
+                                {job.pagesPerSheet || 1} Page
+                                {job.pagesPerSheet > 1 ? "s" : ""}
+                              </p>
+                              {job.upiReferenceId && !isMultiFile && (
+                                <p className="col-span-2">
+                                  <strong className="text-purple-900">
+                                    UPI Ref:
+                                  </strong>{" "}
+                                  <code className="bg-gray-100 px-2 py-1 rounded">
+                                    {job.upiReferenceId}
+                                  </code>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-3 lg:min-w-[200px]">
+                            {job.status === "waiting" && (
+                              <button
+                                onClick={() => handleApprove(job._id)}
+                                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all shadow-lg"
+                              >
+                                ✅ Approve & Print
+                              </button>
+                            )}
+                            {job.status === "printing" && (
+                              <button
+                                onClick={() => handleMarkDone(job._id)}
+                                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all shadow-lg"
+                              >
+                                ✓ Mark as Done
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleDownload(job)}
+                              className="text-center px-6 py-2 bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transition-all"
+                            >
+                              📥 Download
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(job._id)}
+                              className="text-center px-6 py-2 bg-red-600 text-white hover:bg-red-700 font-semibold rounded-lg transition-all"
+                            >
+                              🗑 Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

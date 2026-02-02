@@ -49,6 +49,7 @@ exports.verifyPayment = async (req, res) => {
       razorpay_payment_id,
       razorpay_signature,
       jobId,
+      jobIds, // Support multiple job IDs
     } = req.body;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -67,32 +68,45 @@ exports.verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment verification failed" });
     }
 
-    // Update job with payment details
-    const job = await PrintJob.findOne({ _id: jobId, student: req.user._id });
-    if (!job) {
-      return res.status(404).json({ message: "Job not found" });
+    // Update all jobs with payment details
+    const idsToUpdate = jobIds && jobIds.length > 0 ? jobIds : [jobId];
+    const updatedJobs = [];
+
+    for (const id of idsToUpdate) {
+      const job = await PrintJob.findOne({ _id: id, student: req.user._id });
+      if (!job) {
+        continue; // Skip if job not found
+      }
+
+      job.paymentVerified = true;
+      job.upiReferenceId = razorpay_payment_id; // Store payment ID
+      job.status = "waiting"; // Move to waiting queue
+      await job.save();
+      updatedJobs.push(job);
     }
 
-    job.paymentVerified = true;
-    job.upiReferenceId = razorpay_payment_id; // Store payment ID
-    job.status = "waiting"; // Move to waiting queue
-    await job.save();
+    if (updatedJobs.length === 0) {
+      return res.status(404).json({ message: "No jobs found to update" });
+    }
 
-    // Emit payment verified event
+    // Emit payment verified event for all jobs
     const io = req.app.get("io");
     if (io) {
-      const populatedJob = await PrintJob.findById(job._id).populate(
-        "student",
-        "name email",
-      );
-      io.emit("paymentVerified", populatedJob);
-      io.emit("newJob", populatedJob);
+      for (const job of updatedJobs) {
+        const populatedJob = await PrintJob.findById(job._id).populate(
+          "student",
+          "name email",
+        );
+        io.emit("paymentVerified", populatedJob);
+        io.emit("newJob", populatedJob);
+      }
     }
 
     res.json({
       success: true,
       message: "Payment verified successfully",
-      job,
+      jobCount: updatedJobs.length,
+      jobs: updatedJobs,
     });
   } catch (error) {
     console.error("Payment Verification Error:", error);

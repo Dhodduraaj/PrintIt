@@ -147,7 +147,7 @@ const Navbar = () => {
                     </Link>
 
                     <Link
-                      to="/student/requests"
+                      to="/student/queue"
                       className="text-gray-300 hover:text-white transition"
                     >
                       Requests

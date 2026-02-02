@@ -4,7 +4,7 @@ const upload = require("./upload");
 // Wrapper to handle multer errors properly
 const handleFileUpload = (fieldName = "file") => {
   return (req, res, next) => {
-    const uploadMiddleware = upload.single(fieldName);
+    const uploadMiddleware = upload.array(fieldName); // Allow multiple files
     uploadMiddleware(req, res, (err) => {
       if (err) {
         if (err instanceof multer.MulterError) {
@@ -12,6 +12,9 @@ const handleFileUpload = (fieldName = "file") => {
             return res.status(400).json({ 
               message: "File too large. Maximum size is 10MB" 
             });
+          }
+          if (err.code === "LIMIT_UNEXPECTED_FILE") {
+            return res.status(400).json({ message: "Too many files uploaded" });
           }
           return res.status(400).json({ message: err.message });
         }
