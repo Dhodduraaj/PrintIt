@@ -58,11 +58,16 @@ const printJobSchema = new mongoose.Schema(
 
 // Generate token number before saving
 printJobSchema.pre("save", async function (next) {
-  if (!this.tokenNumber) {
-    const lastJob = await mongoose.model("PrintJob").findOne().sort({ tokenNumber: -1 });
-    this.tokenNumber = lastJob ? lastJob.tokenNumber + 1 : 1000;
+  try {
+    if (!this.tokenNumber) {
+      const PrintJobModel = mongoose.model("PrintJob");
+      const lastJob = await PrintJobModel.findOne().sort({ tokenNumber: -1 }).lean();
+      this.tokenNumber = lastJob && lastJob.tokenNumber ? lastJob.tokenNumber + 1 : 1000;
+    }
+    next();
+  } catch (error) {
+    next(error);
   }
-  next();
 });
 
 module.exports = mongoose.model("PrintJob", printJobSchema);
