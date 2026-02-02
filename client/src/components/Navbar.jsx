@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
@@ -7,11 +7,13 @@ import api from '../utils/api';
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [serviceOpen, setServiceOpen] = useState(true);
   const [isUpdatingService, setIsUpdatingService] = useState(false);
+  const [studentServiceOpen, setStudentServiceOpen] = useState(true);
 
   useEffect(() => {
-    const fetchStatus = async () => {
+    const fetchVendorStatus = async () => {
       if (!user || user.role !== 'vendor') return;
       try {
         const res = await api.get('/api/vendor/service/status');
@@ -21,7 +23,21 @@ const Navbar = () => {
       }
     };
 
-    fetchStatus();
+    fetchVendorStatus();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchStudentStatus = async () => {
+      if (!user || user.role !== 'student') return;
+      try {
+        const res = await api.get('/api/student/service-status');
+        setStudentServiceOpen(res.data.isOpen);
+      } catch (err) {
+        console.error('Failed to fetch student service status', err);
+      }
+    };
+
+    fetchStudentStatus();
   }, [user]);
 
   const handleLogout = () => {
@@ -51,6 +67,14 @@ const Navbar = () => {
     } finally {
       setIsUpdatingService(false);
     }
+  };
+
+  const getCurrentStudentPageLabel = () => {
+    if (user?.role !== 'student') return '';
+    const path = location.pathname;
+    if (path.startsWith('/student/dashboard')) return 'Student Dashboard';
+    if (path.startsWith('/student/queue')) return 'My Queue';
+    return '';
   };
 
   return (
@@ -93,19 +117,27 @@ const Navbar = () => {
               </Link>
             ) : user.role === 'student' ? (
               <>
-                <Link
-                  to="/student/dashboard"
-                  className="text-gray-300 hover:text-white transition"
-                >
-                  Dashboard
-                </Link>
+                {studentServiceOpen ? (
+                  <>
+                    <Link
+                      to="/student/dashboard"
+                      className="text-gray-300 hover:text-white transition"
+                    >
+                      Dashboard
+                    </Link>
 
-                <Link
-                  to="/student/queue"
-                  className="text-gray-300 hover:text-white transition"
-                >
-                  My Queue
-                </Link>
+                    <Link
+                      to="/student/queue"
+                      className="text-gray-300 hover:text-white transition"
+                    >
+                      My Queue
+                    </Link>
+                  </>
+                ) : (
+                  <span className="text-gray-300">
+                    {getCurrentStudentPageLabel()}
+                  </span>
+                )}
 
                 <span className="text-gray-400 font-medium">
                   {user.name}
