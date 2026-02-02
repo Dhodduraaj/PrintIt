@@ -6,6 +6,7 @@ const {
   completeJob,
   downloadFile,
   deleteJob,
+  deleteDoneHistory,
   getServiceStatus,
   updateServiceStatus,
 } = require("../controllers/vendorController");
@@ -19,6 +20,7 @@ router.use(protect);
 router.use(vendorOnly);
 
 router.get("/jobs", getJobs);
+router.delete("/jobs/done-history", deleteDoneHistory);
 router.post("/jobs/:jobId/approve", approveJob);
 router.post("/jobs/:jobId/complete", completeJob);
 router.get("/jobs/:jobId/download", downloadFile);

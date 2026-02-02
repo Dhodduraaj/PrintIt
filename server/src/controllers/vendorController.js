@@ -2,11 +2,15 @@ const PrintJob = require("../models/PrintJob");
 const path = require("path");
 const fs = require("fs");
 const { downloadFromGridFS, getBucket } = require("../services/fileStorage");
-const { getServiceStatus, setServiceStatus } = require("../services/serviceStatus");
+const {
+  getServiceStatus,
+  setServiceStatus,
+} = require("../services/serviceStatus");
 
 exports.getJobs = async (req, res) => {
   try {
-    const jobs = await PrintJob.find()
+    // Only show jobs that have verified payment
+    const jobs = await PrintJob.find({ paymentVerified: true })
       .sort({ createdAt: 1 })
       .populate("student", "name email studentId");
 
@@ -25,6 +29,12 @@ exports.approveJob = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
+    if (!job.paymentVerified) {
+      return res
+        .status(400)
+        .json({ message: "Payment not verified for this job" });
+    }
+
     if (job.status !== "waiting") {
       return res.status(400).json({ message: "Job is not in waiting status" });
     }
@@ -35,7 +45,10 @@ exports.approveJob = async (req, res) => {
     // Emit update
     const io = req.app.get("io");
     if (io) {
-      const updatedJob = await PrintJob.findById(job._id).populate("student", "name email");
+      const updatedJob = await PrintJob.findById(job._id).populate(
+        "student",
+        "name email",
+      );
       io.emit("jobUpdated", updatedJob);
       io.emit("jobStatusUpdate", {
         jobId: job._id,
@@ -68,7 +81,10 @@ exports.completeJob = async (req, res) => {
     // Emit update
     const io = req.app.get("io");
     if (io) {
-      const updatedJob = await PrintJob.findById(job._id).populate("student", "name email");
+      const updatedJob = await PrintJob.findById(job._id).populate(
+        "student",
+        "name email",
+      );
       io.emit("jobUpdated", updatedJob);
       io.emit("jobStatusUpdate", {
         jobId: job._id,
@@ -93,10 +109,15 @@ exports.downloadFile = async (req, res) => {
 
     // Fetch from MongoDB GridFS (new storage)
     if (job.gridFsFileId) {
-      const { buffer, contentType } = await downloadFromGridFS(job.gridFsFileId);
+      const { buffer, contentType } = await downloadFromGridFS(
+        job.gridFsFileId,
+      );
       const encodedFilename = encodeURIComponent(job.fileName);
       res.setHeader("Content-Type", contentType);
-      res.setHeader("Content-Disposition", `attachment; filename="${job.fileName}"; filename*=UTF-8''${encodedFilename}`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${job.fileName}"; filename*=UTF-8''${encodedFilename}`,
+      );
       res.setHeader("Content-Length", buffer.length);
       res.send(buffer);
       return;
@@ -164,6 +185,48 @@ exports.deleteJob = async (req, res) => {
     }
 
     res.json({ message: "Job deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteDoneHistory = async (req, res) => {
+  try {
+    const doneJobs = await PrintJob.find({ status: "done" });
+    const io = req.app.get("io");
+    const jobIds = [];
+
+    for (const job of doneJobs) {
+      if (job.gridFsFileId) {
+        try {
+          const bucket = getBucket();
+          await bucket.delete(job.gridFsFileId);
+        } catch (err) {
+          console.error("Error deleting GridFS file:", err.message || err);
+        }
+      }
+      if (job.filePath) {
+        const filePath = path.join(__dirname, "../../", job.filePath);
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+          } catch (err) {
+            console.error("Error deleting local file:", err.message || err);
+          }
+        }
+      }
+      await job.deleteOne();
+      jobIds.push(job._id.toString());
+      if (io) {
+        io.emit("jobDeleted", { jobId: job._id });
+      }
+    }
+
+    res.json({
+      message: "Done history deleted successfully",
+      deleted: jobIds.length,
+      jobIds,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

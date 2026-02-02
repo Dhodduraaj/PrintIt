@@ -16,14 +16,23 @@ const StudentDashboard = () => {
   const [formData, setFormData] = useState({
     file: null,
     fileName: "",
-    pageCount: "",
+    pageRange: "",
     printType: "black-white",
     copies: 1,
+    duplex: "single-sided",
+    paperSize: "A4",
+    orientation: "portrait",
+    pagesPerSheet: 1,
   });
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [serviceOpen, setServiceOpen] = useState(true);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState({
+    amount: 0,
+    jobId: null,
+  });
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -53,6 +62,36 @@ const StudentDashboard = () => {
       socket.off("serviceStatusChanged", handleStatusChange);
     };
   }, [socket]);
+
+  const calculatePageCount = (pageRange) => {
+    // Parse page ranges like "1-5,7,9-12" and return total count
+    if (!pageRange || !pageRange.trim()) return 0;
+
+    try {
+      const ranges = pageRange.split(",");
+      let totalPages = 0;
+
+      for (let range of ranges) {
+        range = range.trim();
+        if (range.includes("-")) {
+          const [start, end] = range.split("-").map((n) => parseInt(n.trim()));
+          if (isNaN(start) || isNaN(end) || start > end || start < 1) {
+            throw new Error("Invalid range");
+          }
+          totalPages += end - start + 1;
+        } else {
+          const page = parseInt(range);
+          if (isNaN(page) || page < 1) {
+            throw new Error("Invalid page number");
+          }
+          totalPages += 1;
+        }
+      }
+      return totalPages;
+    } catch (err) {
+      return 0;
+    }
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -109,15 +148,34 @@ const StudentDashboard = () => {
       return;
     }
 
+    if (!formData.pageRange || !formData.pageRange.trim()) {
+      setError("Please enter page range");
+      toast.error("Please enter page range (e.g., 1-5 or 1,3,5)");
+      return;
+    }
+
+    const pageCount = calculatePageCount(formData.pageRange);
+    if (pageCount === 0) {
+      setError("Invalid page range format");
+      toast.error("Invalid page range. Use format like: 1-5 or 1,3,5-10");
+      return;
+    }
+
     setUploading(true);
     setError("");
 
     try {
+      // First upload the file
       const uploadFormData = new FormData();
       uploadFormData.append("file", formData.file);
-      uploadFormData.append("pageCount", formData.pageCount);
+      uploadFormData.append("pageCount", pageCount);
+      uploadFormData.append("pageRange", formData.pageRange);
       uploadFormData.append("printType", formData.printType);
       uploadFormData.append("copies", formData.copies);
+      uploadFormData.append("duplex", formData.duplex);
+      uploadFormData.append("paperSize", formData.paperSize);
+      uploadFormData.append("orientation", formData.orientation);
+      uploadFormData.append("pagesPerSheet", formData.pagesPerSheet);
 
       const response = await api.post("/api/student/upload", uploadFormData, {
         headers: {
@@ -125,8 +183,15 @@ const StudentDashboard = () => {
         },
       });
 
-      toast.success("Document uploaded successfully! 🎉");
-      navigate("/student/queue", { state: { jobId: response.data.jobId } });
+      // Calculate amount and show payment modal
+      const pricePerPage = formData.printType === "color" ? 5 : 2;
+      const totalAmount = pageCount * pricePerPage * formData.copies;
+
+      setPaymentDetails({
+        amount: totalAmount,
+        jobId: response.data.jobId,
+      });
+      setShowPaymentModal(true);
     } catch (err) {
       const errorMessage =
         err.response?.data?.message || "Upload failed. Please try again.";
@@ -134,6 +199,71 @@ const StudentDashboard = () => {
       toast.error(errorMessage);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handlePaymentSubmit = async () => {
+    try {
+      // Create Razorpay order
+      const orderResponse = await api.post("/api/payment/create-order", {
+        amount: paymentDetails.amount,
+        jobId: paymentDetails.jobId,
+      });
+
+      const { orderId, amount, currency, keyId } = orderResponse.data;
+
+      // Razorpay checkout options
+      const options = {
+        key: keyId,
+        amount: amount,
+        currency: currency,
+        name: "PrintFlow",
+        description: "Print Job Payment",
+        order_id: orderId,
+        handler: async function (response) {
+          try {
+            // Verify payment
+            const verifyResponse = await api.post(
+              "/api/payment/verify-payment",
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                jobId: paymentDetails.jobId,
+              },
+            );
+
+            if (verifyResponse.data.success) {
+              toast.success("Payment successful! Document uploaded! 🎉");
+              setShowPaymentModal(false);
+              navigate("/student/queue", {
+                state: { jobId: paymentDetails.jobId },
+              });
+            }
+          } catch (err) {
+            toast.error("Payment verification failed");
+            console.error(err);
+          }
+        },
+        prefill: {
+          name: user?.name,
+          email: user?.email,
+        },
+        theme: {
+          color: "#7A2FBF",
+        },
+        modal: {
+          ondismiss: function () {
+            toast.error("Payment cancelled");
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (err) {
+      toast.error("Failed to initiate payment");
+      console.error(err);
     }
   };
 
@@ -257,56 +387,160 @@ const StudentDashboard = () => {
                 </div>
 
                 {/* Print Options - Compact Grid */}
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                      Pages
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.pageCount}
-                      onChange={(e) =>
-                        setFormData({ ...formData, pageCount: e.target.value })
-                      }
-                      required
-                      placeholder="0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                    />
+                <div className="space-y-3 mb-4">
+                  {/* Row 1: Page Range, Print Type, Copies */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Page Range <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.pageRange}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pageRange: e.target.value,
+                          })
+                        }
+                        required
+                        placeholder="1-5 or 1,3,5"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Print Type
+                      </label>
+                      <select
+                        value={formData.printType}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            printType: e.target.value,
+                          })
+                        }
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      >
+                        <option value="black-white">Black & White</option>
+                        <option value="color">Color</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Copies
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={formData.copies}
+                        onChange={(e) =>
+                          setFormData({ ...formData, copies: e.target.value })
+                        }
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                      Type
-                    </label>
-                    <select
-                      value={formData.printType}
-                      onChange={(e) =>
-                        setFormData({ ...formData, printType: e.target.value })
-                      }
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                    >
-                      <option value="black-white">B&W</option>
-                      <option value="color">Color</option>
-                    </select>
+                  {/* Row 2: Duplex, Paper Size, Orientation */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Sides
+                      </label>
+                      <select
+                        value={formData.duplex}
+                        onChange={(e) =>
+                          setFormData({ ...formData, duplex: e.target.value })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      >
+                        <option value="single-sided">Single Sided</option>
+                        <option value="double-sided">Double Sided</option>
+                        <option value="double-sided-flip-long">
+                          Double (Flip Long)
+                        </option>
+                        <option value="double-sided-flip-short">
+                          Double (Flip Short)
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Paper Size
+                      </label>
+                      <select
+                        value={formData.paperSize}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            paperSize: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      >
+                        <option value="A4">A4</option>
+                        <option value="A3">A3</option>
+                        <option value="Letter">Letter</option>
+                        <option value="Legal">Legal</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Orientation
+                      </label>
+                      <select
+                        value={formData.orientation}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            orientation: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      >
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Landscape</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-1">
-                      Copies
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={formData.copies}
-                      onChange={(e) =>
-                        setFormData({ ...formData, copies: e.target.value })
-                      }
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
-                    />
+                  {/* Row 3: Pages Per Sheet */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">
+                        Pages Per Sheet
+                      </label>
+                      <select
+                        value={formData.pagesPerSheet}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            pagesPerSheet: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      >
+                        <option value="1">1 Page</option>
+                        <option value="2">2 Pages</option>
+                        <option value="4">4 Pages</option>
+                        <option value="6">6 Pages</option>
+                        <option value="9">9 Pages</option>
+                      </select>
+                    </div>
+                    <div className="col-span-2 flex items-end">
+                      <div className="text-xs text-gray-500 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 w-full">
+                        💡 <strong>Tip:</strong> Use page range like "1-5,7" for
+                        specific pages
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -352,15 +586,19 @@ const StudentDashboard = () => {
               <div className="space-y-2">
                 <div className="flex items-start gap-2">
                   <span className="text-purple-600 font-bold text-xs">1.</span>
-                  <p className="text-xs text-blue-800">Upload your document</p>
+                  <p className="text-xs text-blue-800">
+                    Upload & select page range
+                  </p>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-purple-600 font-bold text-xs">2.</span>
-                  <p className="text-xs text-blue-800">Get queue position</p>
+                  <p className="text-xs text-blue-800">
+                    Complete secure payment
+                  </p>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-purple-600 font-bold text-xs">3.</span>
-                  <p className="text-xs text-blue-800">Pay via UPI</p>
+                  <p className="text-xs text-blue-800">Track in real-time</p>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-purple-600 font-bold text-xs">4.</span>
@@ -399,6 +637,160 @@ const StudentDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-gradient-to-br from-purple-900/20 via-indigo-900/20 to-purple-900/20 backdrop-blur-md flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => {
+                setShowPaymentModal(false);
+                toast.error("Payment cancelled. Job will be deleted.");
+              }}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <span className="text-2xl">✕</span>
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">💳</span>
+              </div>
+              <h2 className="text-2xl font-bold text-purple-900 mb-2">
+                Complete Payment
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Secure payment powered by Razorpay
+              </p>
+            </div>
+
+            {/* Payment Summary */}
+            <div className="bg-purple-50 rounded-lg p-4 mb-6 max-h-96 overflow-y-auto">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Page Range:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formData.pageRange}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Pages:</span>
+                  <span className="font-semibold text-gray-800">
+                    {calculatePageCount(formData.pageRange)} × {formData.copies}{" "}
+                    copies
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Print Type:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formData.printType === "color" ? "Color" : "Black & White"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Sides:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formData.duplex === "single-sided"
+                      ? "Single"
+                      : formData.duplex === "double-sided"
+                        ? "Double"
+                        : formData.duplex === "double-sided-flip-long"
+                          ? "Double (Flip Long)"
+                          : "Double (Flip Short)"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Paper Size:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formData.paperSize}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Orientation:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formData.orientation.charAt(0).toUpperCase() +
+                      formData.orientation.slice(1)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Pages Per Sheet:</span>
+                  <span className="font-semibold text-gray-800">
+                    {formData.pagesPerSheet}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Rate:</span>
+                  <span className="font-semibold text-gray-800">
+                    ₹{formData.printType === "color" ? "5" : "2"}/page
+                  </span>
+                </div>
+                <div className="border-t border-purple-200 pt-2 mt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-gray-800">
+                      Total Amount:
+                    </span>
+                    <span className="text-2xl font-bold text-purple-600">
+                      ₹{paymentDetails.amount}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Options Info */}
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-4 border border-blue-200">
+                <p className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                  <span className="text-lg">✅</span> Accepted Payment Methods:
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs text-blue-800">
+                  <div className="flex items-center gap-1">
+                    <span>💳</span> Credit/Debit Card
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>📱</span> UPI
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>🏦</span> Net Banking
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span>💰</span> Wallets
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPaymentModal(false);
+                    toast.error("Payment cancelled");
+                  }}
+                  className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePaymentSubmit}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg transition-all shadow-md hover:shadow-xl transform hover:scale-[1.02]"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <span>🔒</span> Pay ₹{paymentDetails.amount}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Security Badge */}
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                <span>🔒</span>
+                <span>Secured by Razorpay</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

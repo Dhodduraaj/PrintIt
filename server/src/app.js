@@ -17,11 +17,13 @@ const authRoutes = require("./routes/authRoutes");
 const studentRoutes = require("./routes/studentRoutes");
 const vendorRoutes = require("./routes/vendorRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
 app.use("/api/vendor", vendorRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/payment", paymentRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
@@ -34,11 +36,15 @@ app.use((err, req, res, next) => {
     console.error("Error:", err);
     if (err.name === "MulterError") {
       if (err.code === "LIMIT_FILE_SIZE") {
-        return res.status(400).json({ message: "File too large. Maximum size is 10MB" });
+        return res
+          .status(400)
+          .json({ message: "File too large. Maximum size is 10MB" });
       }
       return res.status(400).json({ message: err.message });
     }
-    return res.status(500).json({ message: err.message || "Internal server error" });
+    return res
+      .status(500)
+      .json({ message: err.message || "Internal server error" });
   }
   next();
 });
