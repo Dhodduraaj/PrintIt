@@ -54,6 +54,10 @@ exports.approveJob = async (req, res) => {
         jobId: job._id,
         status: "printing",
       });
+      io.emit("request:status", {
+        jobId: job._id,
+        status: "printing",
+      });
 
       // Recalculate and emit queue positions for all waiting/printing jobs
       const queueJobs = await PrintJob.find({
@@ -62,6 +66,10 @@ exports.approveJob = async (req, res) => {
 
       queueJobs.forEach((queueJob, index) => {
         io.emit("queueUpdate", {
+          jobId: queueJob._id.toString(),
+          queuePosition: index + 1,
+        });
+        io.emit("queue:update", {
           jobId: queueJob._id.toString(),
           queuePosition: index + 1,
         });
@@ -102,6 +110,10 @@ exports.completeJob = async (req, res) => {
         jobId: job._id,
         status: "done",
       });
+      io.emit("request:status", {
+        jobId: job._id,
+        status: "done",
+      });
 
       // Recalculate and emit queue positions for all remaining waiting/printing jobs
       const queueJobs = await PrintJob.find({
@@ -110,6 +122,10 @@ exports.completeJob = async (req, res) => {
 
       queueJobs.forEach((queueJob, index) => {
         io.emit("queueUpdate", {
+          jobId: queueJob._id.toString(),
+          queuePosition: index + 1,
+        });
+        io.emit("queue:update", {
           jobId: queueJob._id.toString(),
           queuePosition: index + 1,
         });

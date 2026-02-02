@@ -1,80 +1,67 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
 
 const UserRequestDashboard = () => {
-  const { user } = useAuth();
   const socket = useSocket();
 
-  const [liveRequests, setLiveRequests] = useState([]);
-  const [historyRequests, setHistoryRequests] = useState([]);
+  const [requestsById, setRequestsById] = useState({});
+  const [requestIds, setRequestIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [clearingHistory, setClearingHistory] = useState(false);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+  const [historyPage, setHistoryPage] = useState(1);
 
-  // Fetch all requests on mount
-  useEffect(() => {
-    fetchAllRequests();
+  const HISTORY_PAGE_SIZE = 8;
+  const LIVE_STATUSES = useMemo(
+    () => new Set(["pending", "waiting", "printing"]),
+    []
+  );
+  const HISTORY_STATUSES = useMemo(() => new Set(["done"]), []);
+  const STATUS_RANK = useMemo(
+    () => ({ pending: 1, waiting: 2, printing: 3, done: 4 }),
+    []
+  );
+
+  const normalizeRequests = useCallback((requests) => {
+    const normalized = {};
+    const ids = [];
+
+    requests.forEach((req) => {
+      normalized[req._id] = req;
+      ids.push(req._id);
+    });
+
+    return { normalized, ids };
   }, []);
 
-  // Set up socket listeners for real-time updates
-  useEffect(() => {
-    if (!socket) return;
+  const upsertRequests = useCallback((requests) => {
+    if (!requests || requests.length === 0) return;
 
-    const handleQueueUpdate = (data) => {
-      setLiveRequests((prev) =>
-        prev.map((req) =>
-          req._id === data.jobId
-            ? { ...req, queuePosition: data.queuePosition }
-            : req
-        )
-      );
-    };
+    const { normalized, ids } = normalizeRequests(requests);
 
-    const handleJobStatusUpdate = (data) => {
-      setLiveRequests((prev) => {
-        // If status changed to "done", move to history
-        if (data.status === "done") {
-          const completedJob = prev.find((req) => req._id === data.jobId);
-          if (completedJob) {
-            setHistoryRequests((prevHistory) => [
-              { ...completedJob, status: "done" },
-              ...prevHistory,
-            ]);
-            toast.success("Your print is ready for pickup! ✅");
-          }
-        }
+    setRequestsById((prev) => ({
+      ...prev,
+      ...normalized,
+    }));
 
-        // Update status and filter out non-live requests
-        const updated = prev
-          .map((req) =>
-            req._id === data.jobId
-              ? { ...req, status: data.status }
-              : req
-          )
-          .filter((req) => ["pending", "waiting", "printing"].includes(req.status));
+    setRequestIds((prev) => {
+      const merged = new Set(prev);
+      ids.forEach((id) => merged.add(id));
+      return Array.from(merged);
+    });
+  }, [normalizeRequests]);
 
-        return updated;
-      });
-    };
-
-    socket.on("queueUpdate", handleQueueUpdate);
-    socket.on("jobStatusUpdate", handleJobStatusUpdate);
-
-    return () => {
-      socket.off("queueUpdate", handleQueueUpdate);
-      socket.off("jobStatusUpdate", handleJobStatusUpdate);
-    };
-  }, [socket]);
-
-  const fetchAllRequests = async () => {
+  const fetchAllRequests = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get("/api/student/requests/all");
-      setLiveRequests(response.data.liveRequests);
-      setHistoryRequests(response.data.historyRequests);
+      const liveRequestsResponse = response.data.liveRequests || [];
+      const historyRequestsResponse = response.data.historyRequests || [];
+      const combined = [...liveRequestsResponse, ...historyRequestsResponse];
+      upsertRequests(combined);
+      setHistoryPage(1);
     } catch (err) {
       console.error("Error fetching requests:", err);
       if (err.response?.status !== 401) {
@@ -83,19 +70,142 @@ const UserRequestDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [upsertRequests]);
+
+  // Fetch all requests on mount
+  useEffect(() => {
+    fetchAllRequests();
+  }, [fetchAllRequests]);
+
+  const allRequests = useMemo(() => {
+    return requestIds
+      .map((id) => requestsById[id])
+      .filter(Boolean);
+  }, [requestIds, requestsById]);
+
+  const liveRequests = useMemo(() => {
+    return allRequests
+      .filter((req) => LIVE_STATUSES.has(req.status))
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  }, [allRequests, LIVE_STATUSES]);
+
+  const historyRequests = useMemo(() => {
+    return allRequests
+      .filter((req) => HISTORY_STATUSES.has(req.status))
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }, [allRequests, HISTORY_STATUSES]);
+
+  const paginatedHistory = useMemo(() => {
+    const endIndex = historyPage * HISTORY_PAGE_SIZE;
+    return historyRequests.slice(0, endIndex);
+  }, [historyRequests, historyPage]);
+
+  const hasMoreHistory = historyRequests.length > paginatedHistory.length;
+
+  // Set up socket listeners for real-time updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleQueueUpdate = (data) => {
+      if (!data?.jobId) return;
+
+      setRequestsById((prev) => {
+        const existing = prev[data.jobId];
+        if (!existing) return prev;
+        if (existing.queuePosition === data.queuePosition) return prev;
+
+        return {
+          ...prev,
+          [data.jobId]: {
+            ...existing,
+            queuePosition: data.queuePosition,
+          },
+        };
+      });
+    };
+
+    const handleStatusUpdate = (data) => {
+      if (!data?.jobId || !data?.status) return;
+
+      setRequestsById((prev) => {
+        const existing = prev[data.jobId];
+        if (!existing) return prev;
+        if (existing.status === data.status) return prev;
+
+        const incomingRank = STATUS_RANK[data.status] || 0;
+        const currentRank = STATUS_RANK[existing.status] || 0;
+        if (incomingRank < currentRank) return prev;
+
+        return {
+          ...prev,
+          [data.jobId]: {
+            ...existing,
+            status: data.status,
+            updatedAt: new Date().toISOString(),
+          },
+        };
+      });
+
+      if (data.status === "done") {
+        toast.success("Your print is ready for pickup! ✅");
+      }
+    };
+
+    const handleSocketConnect = () => {
+      fetchAllRequests();
+    };
+
+    const handleSocketDisconnect = () => {
+      toast("Connection lost. Reconnecting...", { icon: "⚠️" });
+    };
+
+    socket.on("queue:update", handleQueueUpdate);
+    socket.on("request:status", handleStatusUpdate);
+    socket.on("queueUpdate", handleQueueUpdate);
+    socket.on("jobStatusUpdate", handleStatusUpdate);
+    socket.on("connect", handleSocketConnect);
+    socket.on("disconnect", handleSocketDisconnect);
+
+    return () => {
+      socket.off("queue:update", handleQueueUpdate);
+      socket.off("request:status", handleStatusUpdate);
+      socket.off("queueUpdate", handleQueueUpdate);
+      socket.off("jobStatusUpdate", handleStatusUpdate);
+      socket.off("connect", handleSocketConnect);
+      socket.off("disconnect", handleSocketDisconnect);
+    };
+  }, [socket, fetchAllRequests, STATUS_RANK]);
 
   const handleClearHistory = async () => {
+    const previousById = { ...requestsById };
+    const previousIds = [...requestIds];
+    const historyIdSet = new Set(
+      Object.values(requestsById)
+        .filter((req) => HISTORY_STATUSES.has(req.status))
+        .map((req) => req._id)
+    );
+
     try {
       setClearingHistory(true);
+      setRequestsById((prev) => {
+        const updated = { ...prev };
+        historyIdSet.forEach((id) => {
+          delete updated[id];
+        });
+        return updated;
+      });
+
+      setRequestIds((prev) => prev.filter((id) => !historyIdSet.has(id)));
+
       await api.delete("/api/student/requests/history", {
         data: { confirmed: true },
       });
-      setHistoryRequests([]);
       setShowClearConfirmation(false);
       toast.success("Request history cleared");
     } catch (err) {
       console.error("Error clearing history:", err);
+      setRequestsById(previousById);
+      setRequestIds(previousIds);
       toast.error("Failed to clear history");
     } finally {
       setClearingHistory(false);
@@ -153,7 +263,14 @@ const UserRequestDashboard = () => {
   };
 
   const RequestCard = ({ request, isLive }) => (
-    <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-500 hover:shadow-lg transition-shadow">
+    <div
+      className={`bg-white rounded-lg shadow-md p-6 border-l-4 hover:shadow-lg transition-all duration-300 ${
+        request.status === "printing"
+          ? "border-blue-500 ring-1 ring-blue-200 animate-pulse"
+          : "border-purple-500"
+      }`}
+      aria-live={request.status === "printing" ? "polite" : "off"}
+    >
       <div className="flex justify-between items-start mb-4">
         <div>
           <h4 className="text-lg font-semibold text-gray-900">
@@ -163,7 +280,12 @@ const UserRequestDashboard = () => {
             Request ID: <span className="font-mono">{request._id.slice(-8)}</span>
           </p>
         </div>
-        <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(request.status)}`}>
+        <span
+          className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(
+            request.status
+          )}`}
+          aria-label={`Status: ${getStatusText(request.status)}`}
+        >
           {getStatusIcon(request.status)} {getStatusText(request.status)}
         </span>
       </div>
@@ -208,8 +330,44 @@ const UserRequestDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-xl text-purple-900 font-semibold">Loading requests...</div>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-10">
+            <div className="h-8 w-64 bg-purple-100 rounded animate-pulse" />
+            <div className="h-4 w-96 bg-gray-200 rounded mt-3 animate-pulse" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-10 w-16 bg-gray-200 rounded mt-3 animate-pulse" />
+              <div className="h-3 w-48 bg-gray-200 rounded mt-4 animate-pulse" />
+            </div>
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-10 w-16 bg-gray-200 rounded mt-3 animate-pulse" />
+              <div className="h-3 w-48 bg-gray-200 rounded mt-4 animate-pulse" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className="bg-white rounded-lg shadow-md p-6"
+                aria-hidden="true"
+              >
+                <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
+                <div className="h-4 w-28 bg-gray-200 rounded mt-3 animate-pulse" />
+                <div className="grid grid-cols-2 gap-4 mt-5">
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                  <div className="h-4 w-20 bg-gray-200 rounded animate-pulse" />
+                </div>
+                <div className="h-4 w-40 bg-gray-200 rounded mt-5 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -288,6 +446,7 @@ const UserRequestDashboard = () => {
               <button
                 onClick={() => setShowClearConfirmation(true)}
                 className="px-4 py-2 bg-red-50 border border-red-300 text-red-600 hover:bg-red-100 font-semibold rounded-lg transition-all text-sm"
+                aria-label="Clear completed request history"
               >
                 🗑️ Clear History
               </button>
@@ -305,19 +464,40 @@ const UserRequestDashboard = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {historyRequests.map((request) => (
-                <RequestCard key={request._id} request={request} isLive={false} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {paginatedHistory.map((request) => (
+                  <RequestCard key={request._id} request={request} isLive={false} />
+                ))}
+              </div>
+              {hasMoreHistory && (
+                <div className="flex justify-center mt-8">
+                  <button
+                    onClick={() => setHistoryPage((prev) => prev + 1)}
+                    className="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold rounded-lg transition-all"
+                    aria-label="Load more history"
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
         {/* Clear History Confirmation Modal */}
         {showClearConfirmation && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 animate-in">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">
+            <div
+              className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 animate-in"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="clear-history-title"
+            >
+              <h3
+                id="clear-history-title"
+                className="text-xl font-bold text-gray-900 mb-3"
+              >
                 🗑️ Clear History?
               </h3>
               <p className="text-gray-600 mb-2">
@@ -331,6 +511,7 @@ const UserRequestDashboard = () => {
                   onClick={() => setShowClearConfirmation(false)}
                   className="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold rounded-lg transition-all"
                   disabled={clearingHistory}
+                  aria-label="Cancel clearing history"
                 >
                   Cancel
                 </button>
@@ -338,6 +519,7 @@ const UserRequestDashboard = () => {
                   onClick={handleClearHistory}
                   className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all disabled:opacity-50"
                   disabled={clearingHistory}
+                  aria-label="Confirm clear history"
                 >
                   {clearingHistory ? "Clearing..." : "Clear History"}
                 </button>

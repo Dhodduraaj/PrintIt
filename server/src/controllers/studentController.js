@@ -173,10 +173,18 @@ exports.getAllRequests = async (req, res) => {
     // Enrich live requests with queue position
     const enrichedLiveRequests = await Promise.all(
       liveRequests.map(async (job) => {
-        const queuePosition = await PrintJob.countDocuments({
-          status: { $in: ["waiting", "printing"] },
-          createdAt: { $lt: job.createdAt },
-        }) + (job.status === "waiting" || job.status === "printing" ? 1 : 0);
+        let queuePosition = 0;
+        if (
+          job.paymentVerified &&
+          (job.status === "waiting" || job.status === "printing")
+        ) {
+          queuePosition =
+            (await PrintJob.countDocuments({
+              status: { $in: ["waiting", "printing"] },
+              paymentVerified: true,
+              createdAt: { $lt: job.createdAt },
+            })) + 1;
+        }
 
         return {
           ...job.toObject(),
