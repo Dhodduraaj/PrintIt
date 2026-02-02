@@ -1,5 +1,13 @@
 const PrintJob = require("../models/PrintJob");
 const User = require("../models/User");
+const { uploadToGridFS } = require("../services/fileStorage");
+
+const getContentType = (mimetype, originalname) => {
+  if (mimetype) return mimetype;
+  const ext = originalname.split(".").pop()?.toLowerCase();
+  const types = { pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" };
+  return types[ext] || "application/octet-stream";
+};
 
 exports.uploadDocument = async (req, res) => {
   try {
@@ -13,6 +21,13 @@ exports.uploadDocument = async (req, res) => {
       return res.status(400).json({ message: "Page count and print type are required" });
     }
 
+    // Upload file to MongoDB GridFS
+    const gridFsFileId = await uploadToGridFS(req.file.buffer, {
+      originalFilename: req.file.originalname,
+      contentType: getContentType(req.file.mimetype, req.file.originalname),
+      studentId: req.user._id.toString(),
+    });
+
     // Calculate amount
     const pageRate = printType === "color" ? 5 : 2;
     const amount = parseInt(pageCount) * pageRate * parseInt(copies || 1);
@@ -20,7 +35,7 @@ exports.uploadDocument = async (req, res) => {
     const job = await PrintJob.create({
       student: req.user._id,
       fileName: req.file.originalname,
-      filePath: req.file.path,
+      gridFsFileId,
       pageCount: parseInt(pageCount),
       printType,
       copies: parseInt(copies || 1),

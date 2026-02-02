@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useSocket } from "../contexts/SocketContext";
-import api, { API_BASE_URL } from "../utils/api";
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
+import axios from 'axios';
+import api from '../utils/api';
 
 const VendorDashboard = () => {
   const { user } = useAuth();
@@ -69,7 +70,37 @@ const VendorDashboard = () => {
       await api.post(`/api/vendor/jobs/${jobId}/complete`);
       fetchJobs();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to mark as done");
+      alert(err.response?.data?.message || 'Failed to mark as done');
+    }
+  };
+
+  const handleDownload = async (job) => {
+    try {
+      const response = await api.get(
+        `/api/vendor/jobs/${job._id}/download`,
+        { responseType: 'blob' }
+      );
+      const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = job.fileName || 'document';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => window.URL.revokeObjectURL(url), 100);
+    } catch (err) {
+      let message = 'Failed to download file';
+      if (err.response?.data instanceof Blob) {
+        try {
+          const text = await err.response.data.text();
+          const json = JSON.parse(text);
+          if (json.message) message = json.message;
+        } catch (_) {}
+      } else if (typeof err.response?.data?.message === 'string') {
+        message = err.response.data.message;
+      }
+      alert(message);
     }
   };
 
@@ -262,14 +293,13 @@ const VendorDashboard = () => {
                         ✓ Mark as Done
                       </button>
                     )}
-                    <a
-                      href={`${API_BASE_URL}/api/vendor/jobs/${job._id}/download`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(job)}
                       className="text-center px-6 py-2 bg-white border-2 border-purple-600 text-purple-600 hover:bg-purple-50 font-semibold rounded-lg transition-all"
                     >
                       📥 Download
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

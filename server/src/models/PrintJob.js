@@ -13,7 +13,12 @@ const printJobSchema = new mongoose.Schema(
     },
     filePath: {
       type: String,
-      required: true,
+      default: null,
+    },
+    gridFsFileId: {
+      type: mongoose.Schema.Types.ObjectId,
+      default: null,
+      ref: "uploadedFiles.files",
     },
     pageCount: {
       type: Number,

@@ -1,6 +1,7 @@
 const PrintJob = require("../models/PrintJob");
 const path = require("path");
 const fs = require("fs");
+const { downloadFromGridFS } = require("../services/fileStorage");
 
 exports.getJobs = async (req, res) => {
   try {
@@ -148,17 +149,32 @@ exports.downloadFile = async (req, res) => {
       return res.status(404).json({ message: "Job not found" });
     }
 
-    const filePath = path.join(__dirname, "../../", job.filePath);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: "File not found" });
+    // Fetch from MongoDB GridFS (new storage)
+    if (job.gridFsFileId) {
+      const { buffer, contentType } = await downloadFromGridFS(job.gridFsFileId);
+      const encodedFilename = encodeURIComponent(job.fileName);
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${job.fileName}"; filename*=UTF-8''${encodedFilename}`);
+      res.setHeader("Content-Length", buffer.length);
+      res.send(buffer);
+      return;
     }
 
-    res.download(filePath, job.fileName, (err) => {
-      if (err) {
-        res.status(500).json({ message: "Error downloading file" });
+    // Fallback: legacy files from local /uploads
+    if (job.filePath) {
+      const filePath = path.join(__dirname, "../../", job.filePath);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "File not found" });
       }
-    });
+      res.download(filePath, job.fileName, (err) => {
+        if (err) {
+          res.status(500).json({ message: "Error downloading file" });
+        }
+      });
+      return;
+    }
+
+    return res.status(404).json({ message: "File not found" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
