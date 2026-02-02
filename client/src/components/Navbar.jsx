@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
@@ -74,6 +74,7 @@ const Navbar = () => {
     const path = location.pathname;
     if (path.startsWith('/student/dashboard')) return 'Student Dashboard';
     if (path.startsWith('/student/queue')) return 'My Queue';
+    if (path.startsWith('/student/requests')) return 'Requests';
     return '';
   };
 
@@ -102,7 +103,7 @@ const Navbar = () => {
               to="/"
               className="text-xl font-semibold text-white tracking-wide flex items-center gap-2"
             >
-              🖨️ PrintFlow
+              PrintFlow
             </Link>
           </div>
 
@@ -131,6 +132,13 @@ const Navbar = () => {
                       className="text-gray-300 hover:text-white transition"
                     >
                       My Queue
+                    </Link>
+
+                    <Link
+                      to="/student/requests"
+                      className="text-gray-300 hover:text-white transition"
+                    >
+                      Requests
                     </Link>
                   </>
                 ) : (
