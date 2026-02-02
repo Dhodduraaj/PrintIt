@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
