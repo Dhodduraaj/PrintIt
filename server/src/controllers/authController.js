@@ -57,7 +57,12 @@ exports.studentRegister = async (req, res) => {
 
 exports.studentLogin = async (req, res) => {
   try {
+    console.log("[Backend] Student Login - Full body:", JSON.stringify(req.body));
+    console.log("[Backend] Content-Type:", req.headers['content-type']);
+    
     const { email, password } = req.body;
+
+    console.log("[Backend] Extracted - email:", email, "password:", password ? "[PROVIDED]" : "[MISSING]");
 
     if (!email || !password) {
       return res

@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { Link, useNavigate } from "react-router-dom";
+import FloatingLines from "../components/FloatingLines";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../utils/api";
-import FloatingLines from "../components/FloatingLines";
 
 const StudentLogin = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -52,6 +52,10 @@ const StudentLogin = () => {
         role = "student";
       }
 
+      console.log("[Frontend] Endpoint:", endpoint);
+      console.log("[Frontend] Payload:", formData);
+      console.log("[Frontend] isLogin:", isLogin, "isVendor:", isVendor);
+
       const response = await api.post(endpoint, formData);
 
       login({ ...response.data.user, role }, response.data.token);
@@ -62,6 +66,12 @@ const StudentLogin = () => {
       );
       navigate(`/${role}/dashboard`);
     } catch (err) {
+      console.error("[Frontend] Error details:", {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        message: err.message
+      });
       const errorMessage = err.response?.data?.message || "An error occurred. Please try again.";
       setError(errorMessage);
       toast.error(errorMessage);

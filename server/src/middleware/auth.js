@@ -8,7 +8,8 @@ exports.protect = async (req, res, next) => {
       return res.status(401).json({ message: "Not authorized" });
     }
 
-    const jwtSecret = process.env.JWT_SECRET || "your-secret-key";
+    const jwtSecret =
+      process.env.JWT_SECRET || "printflow-secret-key-change-in-production";
     const decoded = jwt.verify(token, jwtSecret);
     const user = await User.findById(decoded.id).select("-password");
     
