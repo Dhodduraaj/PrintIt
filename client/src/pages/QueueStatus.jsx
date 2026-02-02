@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
@@ -30,12 +31,21 @@ const QueueStatus = () => {
       if (data.jobId === job?._id) {
         setJob(data.job);
         setQueuePosition(data.queuePosition);
+        if (data.queuePosition <= 3 && data.queuePosition > 0) {
+          toast.success(`You're #${data.queuePosition} in queue! Almost there! 🚀`);
+        }
       }
     });
 
     socket.on("jobStatusUpdate", (data) => {
       if (data.jobId === job?._id) {
         setJob((prev) => ({ ...prev, status: data.status }));
+        
+        if (data.status === "printing") {
+          toast.info("Your document is being printed! 🖨️");
+        } else if (data.status === "done") {
+          toast.success("Your print is ready for pickup! ✅");
+        }
       }
     });
 
@@ -54,6 +64,9 @@ const QueueStatus = () => {
       }
     } catch (err) {
       console.error("Error fetching job:", err);
+      if (err.response?.status !== 401) {
+        toast.error("Failed to fetch job details");
+      }
     } finally {
       setLoading(false);
     }
@@ -66,6 +79,9 @@ const QueueStatus = () => {
       setQueuePosition(response.data.queuePosition);
     } catch (err) {
       console.error("Error fetching job:", err);
+      if (err.response?.status !== 401) {
+        toast.error("Failed to fetch job status");
+      }
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 
 const Navbar = () => {
@@ -7,6 +8,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
+    toast.success('Logged out successfully! See you soon! 👋');
     navigate('/');
   };
 
