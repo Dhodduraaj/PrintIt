@@ -248,7 +248,7 @@ const VendorDashboard = () => {
                         {getStatusText(job.status)}
                       </span>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-3 text-gray-700">
+                    <div className="grid md:grid-cols-2 gap-2 text-sm text-gray-700">
                       <p>
                         <strong className="text-purple-900">Student:</strong>{" "}
                         {job.student?.name || "N/A"}
@@ -258,12 +258,36 @@ const VendorDashboard = () => {
                         {job.fileName}
                       </p>
                       <p>
+                        <strong className="text-purple-900">Page Range:</strong>{" "}
+                        {job.pageRange || "All pages"}
+                      </p>
+                      <p>
                         <strong className="text-purple-900">Pages:</strong>{" "}
                         {job.pageCount} × {job.copies} copies
                       </p>
                       <p>
-                        <strong className="text-purple-900">Type:</strong>{" "}
+                        <strong className="text-purple-900">Print Type:</strong>{" "}
                         {job.printType === "color" ? "Color" : "Black & White"}
+                      </p>
+                      <p>
+                        <strong className="text-purple-900">Sides:</strong>{" "}
+                        {job.duplex === "single-sided" ? "Single Sided" : 
+                         job.duplex === "double-sided" ? "Double Sided" :
+                         job.duplex === "double-sided-flip-long" ? "Double Sided (Flip Long)" :
+                         job.duplex === "double-sided-flip-short" ? "Double Sided (Flip Short)" :
+                         "Single Sided"}
+                      </p>
+                      <p>
+                        <strong className="text-purple-900">Paper Size:</strong>{" "}
+                        {job.paperSize || "A4"}
+                      </p>
+                      <p>
+                        <strong className="text-purple-900">Orientation:</strong>{" "}
+                        {job.orientation === "portrait" ? "Portrait" : "Landscape"}
+                      </p>
+                      <p>
+                        <strong className="text-purple-900">Pages Per Sheet:</strong>{" "}
+                        {job.pagesPerSheet || 1} Page{job.pagesPerSheet > 1 ? "s" : ""}
                       </p>
                       {job.upiReferenceId && (
                         <p className="col-span-2">
