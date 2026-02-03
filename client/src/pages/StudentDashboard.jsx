@@ -6,6 +6,7 @@ import pcServiceMobile from "../assets/pcservice2.png";
 import { useAuth } from "../contexts/AuthContext";
 import { useSocket } from "../contexts/SocketContext";
 import api from "../utils/api";
+import { countPdfPages, getPageRangeError } from "../utils/pdfUtils";
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -83,7 +84,7 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     const validFiles = [];
 
@@ -96,11 +97,13 @@ const StudentDashboard = () => {
         toast.error(`${file.name}: Please upload PDF or DOC files only`);
         continue;
       }
+      const totalPages = await countPdfPages(file);
       validFiles.push({
         id: Date.now() + Math.random(),
         file,
         fileName: file.name,
         pageRange: "",
+        totalPages,
         printType: "black-white",
         copies: 1,
         duplex: "single-sided",
@@ -111,7 +114,7 @@ const StudentDashboard = () => {
     }
 
     if (validFiles.length > 0) {
-      setFileList([...fileList, ...validFiles]);
+      setFileList((prev) => [...prev, ...validFiles]);
       setError("");
       toast.success(`${validFiles.length} file(s) added successfully.`);
     }
@@ -126,7 +129,7 @@ const StudentDashboard = () => {
     e.currentTarget.classList.remove("dragover");
   };
 
-  const handleDrop = (e) => {
+  const handleDrop = async (e) => {
     e.preventDefault();
     e.currentTarget.classList.remove("dragover");
     const files = Array.from(e.dataTransfer.files);
@@ -141,11 +144,13 @@ const StudentDashboard = () => {
         toast.error(`${file.name}: Please upload PDF or DOC files only`);
         continue;
       }
+      const totalPages = await countPdfPages(file);
       validFiles.push({
         id: Date.now() + Math.random(),
         file,
         fileName: file.name,
         pageRange: "",
+        totalPages,
         printType: "black-white",
         copies: 1,
         duplex: "single-sided",
@@ -156,20 +161,20 @@ const StudentDashboard = () => {
     }
 
     if (validFiles.length > 0) {
-      setFileList([...fileList, ...validFiles]);
+      setFileList((prev) => [...prev, ...validFiles]);
       setError("");
       toast.success(`${validFiles.length} file(s) ready to upload.`);
     }
   };
 
   const updateFileSettings = (id, field, value) => {
-    setFileList(
-      fileList.map((f) => (f.id === id ? { ...f, [field]: value } : f)),
+    setFileList((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, [field]: value } : f)),
     );
   };
 
   const removeFile = (id) => {
-    setFileList(fileList.filter((f) => f.id !== id));
+    setFileList((prev) => prev.filter((f) => f.id !== id));
     toast.success("File removed.");
   };
 
@@ -181,11 +186,21 @@ const StudentDashboard = () => {
       return;
     }
 
-    // Validate all files have page ranges
+    // Validate all files have page ranges and valid ranges
     for (const fileData of fileList) {
       if (!fileData.pageRange || !fileData.pageRange.trim()) {
         setError(`Please enter page range for ${fileData.fileName}`);
         toast.error(`Please enter page range for ${fileData.fileName}`);
+        return;
+      }
+
+      const rangeError = getPageRangeError(
+        fileData.pageRange,
+        fileData.totalPages,
+      );
+      if (rangeError) {
+        setError(`${fileData.fileName}: ${rangeError}`);
+        toast.error(`${fileData.fileName}: ${rangeError}`);
         return;
       }
 
@@ -436,6 +451,11 @@ const StudentDashboard = () => {
                               <label className="block text-xs font-semibold text-gray-600 mb-1">
                                 Page Range{" "}
                                 <span className="text-red-500">*</span>
+                                {fileData.totalPages != null && (
+                                  <span className="text-gray-400 font-normal">
+                                    (max {fileData.totalPages})
+                                  </span>
+                                )}
                               </label>
                               <input
                                 type="text"
@@ -448,8 +468,26 @@ const StudentDashboard = () => {
                                   )
                                 }
                                 placeholder="1-5 or 1,3,5"
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs"
+                                className={`w-full px-2 py-1.5 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-xs ${
+                                  getPageRangeError(
+                                    fileData.pageRange,
+                                    fileData.totalPages,
+                                  )
+                                    ? "border-red-400"
+                                    : "border-gray-300"
+                                }`}
                               />
+                              {getPageRangeError(
+                                fileData.pageRange,
+                                fileData.totalPages,
+                              ) && (
+                                <p className="text-red-500 text-xs mt-1">
+                                  {getPageRangeError(
+                                    fileData.pageRange,
+                                    fileData.totalPages,
+                                  )}
+                                </p>
+                              )}
                             </div>
                             <div>
                               <label className="block text-xs font-semibold text-gray-600 mb-1">

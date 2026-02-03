@@ -25,6 +25,10 @@ const printJobSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
+    totalPages: {
+      type: Number,
+      default: null,
+    },
     pageRange: {
       type: String,
       default: null,

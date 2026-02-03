@@ -4,6 +4,8 @@ const { uploadToGridFS } = require("../services/fileStorage");
 const {
   getServiceStatus: getServiceStatusValue,
 } = require("../services/serviceStatus");
+const { validatePageRange } = require("../utils/pageRangeValidator");
+const { countPagesForFile } = require("../utils/pageCounter");
 
 const getContentType = (mimetype, originalname) => {
   if (mimetype) return mimetype;
@@ -84,6 +86,21 @@ exports.uploadDocument = async (req, res) => {
           });
       }
 
+      // Always calculate page count for every upload (no default)
+      const totalPages = await countPagesForFile(
+        file.buffer,
+        file.mimetype,
+        file.originalname,
+      );
+      if (totalPages != null) {
+        const rangeError = validatePageRange(filePageRange, totalPages);
+        if (rangeError) {
+          return res.status(400).json({
+            message: `${file.originalname}: ${rangeError}`,
+          });
+        }
+      }
+
       // Upload file to MongoDB GridFS
       const gridFsFileId = await uploadToGridFS(file.buffer, {
         originalFilename: file.originalname,
@@ -101,6 +118,7 @@ exports.uploadDocument = async (req, res) => {
         fileName: file.originalname,
         gridFsFileId,
         pageCount: parseInt(filePageCount),
+        totalPages: totalPages,
         pageRange: filePageRange || null,
         printType: filePrintType,
         copies: parseInt(fileCopies || 1),
