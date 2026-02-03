@@ -50,6 +50,11 @@ exports.uploadDocument = async (req, res) => {
     }
 
     const createdJobs = [];
+    const vendorId = req.body.vendorId;
+
+    if (!vendorId) {
+      return res.status(400).json({ message: "Vendor ID is required" });
+    }
 
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
@@ -98,6 +103,7 @@ exports.uploadDocument = async (req, res) => {
 
       const job = await PrintJob.create({
         student: req.user._id,
+        vendor: vendorId,
         fileName: file.originalname,
         gridFsFileId,
         pageCount: parseInt(filePageCount),
@@ -140,7 +146,9 @@ exports.getJobStatus = async (req, res) => {
     const job = await PrintJob.findOne({
       _id: jobId,
       student: req.user._id,
-    }).populate("student", "name email");
+    })
+      .populate("student", "name email")
+      .populate("vendor", "name");
 
     if (!job) {
       return res.status(404).json({ message: "Job not found" });
@@ -154,6 +162,7 @@ exports.getJobStatus = async (req, res) => {
     ) {
       queuePosition =
         (await PrintJob.countDocuments({
+          vendor: job.vendor,
           status: { $in: ["waiting", "printing"] },
           paymentVerified: true,
           createdAt: { $lt: job.createdAt },
@@ -170,7 +179,8 @@ exports.getLatestJob = async (req, res) => {
   try {
     const job = await PrintJob.findOne({ student: req.user._id })
       .sort({ createdAt: -1 })
-      .populate("student", "name email");
+      .populate("student", "name email")
+      .populate("vendor", "name");
 
     if (!job) {
       return res.json({ job: null, queuePosition: 0 });
@@ -184,6 +194,7 @@ exports.getLatestJob = async (req, res) => {
     ) {
       queuePosition =
         (await PrintJob.countDocuments({
+          vendor: job.vendor,
           status: { $in: ["waiting", "printing"] },
           paymentVerified: true,
           createdAt: { $lt: job.createdAt },
@@ -196,8 +207,41 @@ exports.getLatestJob = async (req, res) => {
   }
 };
 
-exports.getServiceStatus = (req, res) => {
-  res.json({ isOpen: getServiceStatusValue() });
+exports.getServiceStatus = async (req, res) => {
+  try {
+    const { vendorId } = req.query;
+    if (vendorId) {
+      const vendor = await User.findById(vendorId);
+      return res.json({ isOpen: vendor?.isShopOpen ?? false });
+    }
+    res.json({ isOpen: getServiceStatusValue() });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getAllVendors = async (req, res) => {
+  try {
+    const vendors = await User.find({ role: "VENDOR" }).select("name isShopOpen");
+    
+    const vendorsWithQueue = await Promise.all(vendors.map(async (vendor) => {
+      const queueSize = await PrintJob.countDocuments({
+        vendor: vendor._id,
+        status: { $in: ["waiting", "printing"] },
+        paymentVerified: true
+      });
+      return {
+        _id: vendor._id,
+        name: vendor.name,
+        isShopOpen: vendor.isShopOpen,
+        queueSize
+      };
+    }));
+
+    res.json({ vendors: vendorsWithQueue });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // Fetch all user requests with categorization (Live vs History)
@@ -212,7 +256,8 @@ exports.getAllRequests = async (req, res) => {
       status: { $in: liveStatusList },
     })
       .sort({ createdAt: 1 })
-      .populate("student", "name email");
+      .populate("student", "name email")
+      .populate("vendor", "name");
 
     // Fetch history requests (sorted by most recent first)
     const historyRequests = await PrintJob.find({
@@ -220,7 +265,8 @@ exports.getAllRequests = async (req, res) => {
       status: { $in: historyStatusList },
     })
       .sort({ createdAt: -1 })
-      .populate("student", "name email");
+      .populate("student", "name email")
+      .populate("vendor", "name");
 
     // Enrich live requests with queue position
     const enrichedLiveRequests = await Promise.all(
@@ -232,6 +278,7 @@ exports.getAllRequests = async (req, res) => {
         ) {
           queuePosition =
             (await PrintJob.countDocuments({
+              vendor: job.vendor,
               status: { $in: ["waiting", "printing"] },
               paymentVerified: true,
               createdAt: { $lt: job.createdAt },
