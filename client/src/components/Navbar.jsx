@@ -105,7 +105,7 @@ const Navbar = () => {
               to="/"
               className="text-xl font-semibold text-white tracking-wide flex items-center gap-2"
             >
-              PrintFlow
+              🖨️ PrintFlow
             </Link>
           </div>
 
