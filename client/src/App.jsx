@@ -20,6 +20,7 @@ import StudentLogin from "./pages/StudentLogin";
 import UserRequestDashboard from "./pages/UserRequestDashboard";
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorLogin from "./pages/VendorLogin";
+import Vendors from "./pages/Vendors";
 
 function AppContent() {
   const location = useLocation();
@@ -45,6 +46,14 @@ function AppContent() {
           <Route path="/vendor-login" element={<VendorLogin />} />
 
           {/* Student Routes */}
+          <Route
+            path="/student/vendors"
+            element={
+              <ProtectedRoute requiredRole="student">
+                <Vendors />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/student/dashboard"
             element={

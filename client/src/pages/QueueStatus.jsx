@@ -324,6 +324,12 @@ const QueueStatus = () => {
                               </span>
                             </p>
                             <p>
+                              <strong className="text-gray-700">Vendor:</strong>{" "}
+                              <span className="text-purple-600 font-semibold">
+                                {job.vendor?.name || "N/A"}
+                              </span>
+                            </p>
+                            <p>
                               <strong className="text-gray-700">Type:</strong>{" "}
                               <span className="text-gray-900">
                                 {job.printType === "color" ? "Color" : "B&W"}

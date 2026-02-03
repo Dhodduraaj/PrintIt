@@ -19,15 +19,21 @@ const VendorDashboard = () => {
     if (!socket) return;
 
     socket.on("newJob", (job) => {
-      setJobs((prev) => [...prev, job]);
-      toast.success(`New job received: Token #${job.tokenNumber}`);
+      const vendorId = job.vendor?._id || job.vendor;
+      if (vendorId === user._id) {
+        setJobs((prev) => [...prev, job]);
+        toast.success(`New job received: Token #${job.tokenNumber}`);
+      }
     });
 
     socket.on("jobUpdated", (updatedJob) => {
-      setJobs((prev) =>
-        prev.map((j) => (j._id === updatedJob._id ? updatedJob : j)),
-      );
-      toast(`Job updated: Token #${updatedJob.tokenNumber}`, { icon: "🔄" });
+      const vendorId = updatedJob.vendor?._id || updatedJob.vendor;
+      if (vendorId === user._id) {
+        setJobs((prev) =>
+          prev.map((j) => (j._id === updatedJob._id ? updatedJob : j)),
+        );
+        toast(`Job updated: Token #${updatedJob.tokenNumber}`, { icon: "🔄" });
+      }
     });
 
     socket.on("jobDeleted", ({ jobId }) => {

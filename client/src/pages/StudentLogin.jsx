@@ -174,7 +174,11 @@ const StudentLogin = () => {
           ? `Welcome back, ${response.data.user.name}!`
           : `Account created successfully! Welcome, ${response.data.user.name}!`
       );
-      navigate(`/${role}/dashboard`);
+      if (role === 'student') {
+        navigate('/student/vendors');
+      } else {
+        navigate(`/${role}/dashboard`);
+      }
     } catch (err) {
       console.error("[Frontend] Error details:", {
         status: err.response?.status,

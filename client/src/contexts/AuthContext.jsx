@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 const AuthContext = createContext();
 
@@ -12,13 +12,18 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [selectedVendor, setSelectedVendor] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
+    const vendorData = localStorage.getItem('selectedVendor');
     if (token && userData) {
       setUser(JSON.parse(userData));
+    }
+    if (vendorData) {
+      setSelectedVendor(JSON.parse(vendorData));
     }
     setLoading(false);
   }, []);
@@ -32,11 +37,18 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('selectedVendor');
     setUser(null);
+    setSelectedVendor(null);
+  };
+
+  const selectVendor = (vendor) => {
+    localStorage.setItem('selectedVendor', JSON.stringify(vendor));
+    setSelectedVendor(vendor);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, selectedVendor, selectVendor }}>
       {children}
     </AuthContext.Provider>
   );

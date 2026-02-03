@@ -1,17 +1,17 @@
 const PrintJob = require("../models/PrintJob");
 const path = require("path");
 const fs = require("fs");
+const User = require("../models/User");
 const { downloadFromGridFS, getBucket } = require("../services/fileStorage");
-const {
-  getServiceStatus,
-  setServiceStatus,
-} = require("../services/serviceStatus");
 const { sendPickupNotification } = require("../services/smsService");
 
 exports.getJobs = async (req, res) => {
   try {
-    // Only show jobs that have verified payment
-    const jobs = await PrintJob.find({ paymentVerified: true })
+    // Only show jobs that have verified payment for THIS vendor
+    const jobs = await PrintJob.find({ 
+      vendor: req.user._id,
+      paymentVerified: true 
+    })
       .sort({ createdAt: 1 })
       .populate("student", "name email studentId");
 
@@ -60,8 +60,9 @@ exports.approveJob = async (req, res) => {
         status: "printing",
       });
 
-      // Recalculate and emit queue positions for all waiting/printing jobs
+      // Recalculate and emit queue positions for all waiting/printing jobs for THIS vendor
       const queueJobs = await PrintJob.find({
+        vendor: job.vendor,
         status: { $in: ["waiting", "printing"] },
       }).sort({ createdAt: 1 });
 
@@ -233,7 +234,10 @@ exports.deleteJob = async (req, res) => {
 
 exports.deleteDoneHistory = async (req, res) => {
   try {
-    const doneJobs = await PrintJob.find({ status: "done" });
+    const doneJobs = await PrintJob.find({ 
+      vendor: req.user._id,
+      status: "done" 
+    });
     const io = req.app.get("io");
     const jobIds = [];
 
@@ -273,23 +277,39 @@ exports.deleteDoneHistory = async (req, res) => {
   }
 };
 
-exports.getServiceStatus = (req, res) => {
-  res.json({ isOpen: getServiceStatus() });
+exports.getServiceStatus = async (req, res) => {
+  try {
+    const vendor = await User.findById(req.user._id);
+    res.json({ isOpen: vendor.isShopOpen });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
-exports.updateServiceStatus = (req, res) => {
-  const { isOpen } = req.body;
+exports.updateServiceStatus = async (req, res) => {
+  try {
+    const { isOpen } = req.body;
 
-  if (typeof isOpen !== "boolean") {
-    return res.status(400).json({ message: "isOpen must be a boolean" });
+    if (typeof isOpen !== "boolean") {
+      return res.status(400).json({ message: "isOpen must be a boolean" });
+    }
+
+    const vendor = await User.findByIdAndUpdate(
+      req.user._id,
+      { isShopOpen: isOpen },
+      { new: true }
+    );
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("serviceStatusChanged", { 
+        vendorId: req.user._id,
+        isOpen 
+      });
+    }
+
+    res.json({ isOpen: vendor.isShopOpen });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-
-  setServiceStatus(isOpen);
-
-  const io = req.app.get("io");
-  if (io) {
-    io.emit("serviceStatusChanged", { isOpen });
-  }
-
-  res.json({ isOpen });
 };

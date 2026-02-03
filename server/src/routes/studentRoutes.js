@@ -7,23 +7,19 @@ const {
   getServiceStatus,
   getAllRequests,
   clearRequestHistory,
+  getAllVendors,
 } = require("../controllers/studentController");
 const handleFileUpload = require("../middleware/uploadHandler");
 
 const router = express.Router();
 
-// All routes require authentication
-router.use(protect);
-router.use(studentOnly);
-
-// Upload route with proper error handling
-router.post("/upload", handleFileUpload("file"), uploadDocument);
-router.get("/job/:jobId", getJobStatus);
-router.get("/latest-job", getLatestJob);
-router.get("/service-status", getServiceStatus);
-
-// User Requests Dashboard routes
-router.get("/requests/all", getAllRequests);
-router.delete("/requests/history", clearRequestHistory);
+// Routes
+router.get("/vendors", protect, studentOnly, getAllVendors);
+router.post("/upload", protect, studentOnly, handleFileUpload("file"), uploadDocument);
+router.get("/job/:jobId", protect, studentOnly, getJobStatus);
+router.get("/latest-job", protect, studentOnly, getLatestJob);
+router.get("/service-status", protect, studentOnly, getServiceStatus);
+router.get("/requests/all", protect, studentOnly, getAllRequests);
+router.delete("/requests/history", protect, studentOnly, clearRequestHistory);
 
 module.exports = router;

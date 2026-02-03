@@ -9,7 +9,7 @@ import api from "../utils/api";
 import { countPdfPages, getPageRangeError } from "../utils/pdfUtils";
 
 const StudentDashboard = () => {
-  const { user } = useAuth();
+  const { user, selectedVendor } = useAuth();
   const socket = useSocket();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -26,9 +26,16 @@ const StudentDashboard = () => {
   });
 
   useEffect(() => {
+    if (!selectedVendor) {
+      navigate("/student/vendors");
+      return;
+    }
+
     const fetchStatus = async () => {
       try {
-        const response = await api.get("/api/student/service-status");
+        const response = await api.get(
+          `/api/student/service-status?vendorId=${selectedVendor._id}`
+        );
         setServiceOpen(response.data.isOpen);
       } catch (err) {
         console.error("Error fetching service status:", err);
@@ -38,13 +45,15 @@ const StudentDashboard = () => {
     };
 
     fetchStatus();
-  }, []);
+  }, [selectedVendor, navigate]);
 
   useEffect(() => {
-    if (!socket) return;
+    if (!socket || !selectedVendor) return;
 
-    const handleStatusChange = ({ isOpen }) => {
-      setServiceOpen(isOpen);
+    const handleStatusChange = ({ vendorId, isOpen }) => {
+      if (vendorId === selectedVendor._id) {
+        setServiceOpen(isOpen);
+      }
     };
 
     socket.on("serviceStatusChanged", handleStatusChange);
@@ -52,7 +61,7 @@ const StudentDashboard = () => {
     return () => {
       socket.off("serviceStatusChanged", handleStatusChange);
     };
-  }, [socket]);
+  }, [socket, selectedVendor]);
 
   const calculatePageCount = (pageRange) => {
     // Parse page ranges like "1-5,7,9-12" and return total count
@@ -238,6 +247,7 @@ const StudentDashboard = () => {
       }));
 
       uploadFormData.append("fileParams", JSON.stringify(fileParams));
+      uploadFormData.append("vendorId", selectedVendor._id);
 
       const response = await api.post("/api/student/upload", uploadFormData, {
         headers: {
@@ -362,7 +372,7 @@ const StudentDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 py-6">
       <div className="max-w-[1280px] mx-auto px-6">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-6 flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-purple-900">
               Hey {user?.name}! 👋
@@ -370,6 +380,23 @@ const StudentDashboard = () => {
             <p className="text-sm text-gray-600 mt-1">
               Quick upload • Fast queue • Easy pickup
             </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">
+              Selected Vendor
+            </p>
+            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-lg shadow-sm border border-purple-100">
+              <span className="text-lg">🏪</span>
+              <span className="font-bold text-purple-900">
+                {selectedVendor?.name}
+              </span>
+              <button
+                onClick={() => navigate("/student/vendors")}
+                className="ml-2 text-xs text-purple-600 hover:text-purple-800 underline font-medium"
+              >
+                Change
+              </button>
+            </div>
           </div>
         </div>
 

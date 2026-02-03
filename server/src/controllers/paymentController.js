@@ -93,10 +93,9 @@ exports.verifyPayment = async (req, res) => {
     const io = req.app.get("io");
     if (io) {
       for (const job of updatedJobs) {
-        const populatedJob = await PrintJob.findById(job._id).populate(
-          "student",
-          "name email",
-        );
+        const populatedJob = await PrintJob.findById(job._id)
+          .populate("student", "name email")
+          .populate("vendor", "name");
         io.emit("paymentVerified", populatedJob);
         io.emit("newJob", populatedJob);
       }

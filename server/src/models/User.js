@@ -30,6 +30,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
       trim: true
+    },
+    isShopOpen: {
+      type: Boolean,
+      default: true
     }
   },
   { timestamps: true }

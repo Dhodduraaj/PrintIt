@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../utils/api';
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, selectedVendor } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [serviceOpen, setServiceOpen] = useState(true);
@@ -16,15 +16,10 @@ const Navbar = () => {
     const fetchVendorStatus = async () => {
       if (!user || user.role !== 'vendor') return;
       
-      // Add a small delay to ensure token is available
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      
       try {
         const res = await api.get('/api/vendor/service/status');
         setServiceOpen(res.data.isOpen);
       } catch (err) {
-        // Don't show error to user for this background check
         console.debug('Vendor service status check failed:', err.response?.status);
       }
     };
@@ -34,23 +29,18 @@ const Navbar = () => {
 
   useEffect(() => {
     const fetchStudentStatus = async () => {
-      if (!user || user.role !== 'student') return;
-      
-      // Add a small delay to ensure token is available
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!user || user.role !== 'student' || !selectedVendor) return;
       
       try {
-        const res = await api.get('/api/student/service-status');
+        const res = await api.get(`/api/student/service-status?vendorId=${selectedVendor._id}`);
         setStudentServiceOpen(res.data.isOpen);
       } catch (err) {
-        // Don't show error to user for this background check
         console.debug('Service status check failed:', err.response?.status);
       }
     };
 
     fetchStudentStatus();
-  }, [user]);
+  }, [user, selectedVendor]);
 
   const handleLogout = () => {
     logout();
@@ -130,6 +120,12 @@ const Navbar = () => {
               </Link>
             ) : user.role === 'student' ? (
               <>
+                <Link
+                  to="/student/vendors"
+                  className="text-gray-300 hover:text-white transition"
+                >
+                  Vendors
+                </Link>
                 {studentServiceOpen ? (
                   <>
                     <Link
