@@ -175,8 +175,16 @@ const VendorDashboard = () => {
     return groups;
   }, {});
 
-  // Convert to array of groups sorted by first job's creation time
+  // Convert to array of groups sorted by status (done at bottom) and time (FIFO)
   const jobGroups = Object.values(groupedJobs).sort((a, b) => {
+    // A group is considered "done" if all its jobs are done
+    const aAllDone = a.every((j) => j.status === "done");
+    const bAllDone = b.every((j) => j.status === "done");
+
+    if (aAllDone !== bAllDone) {
+      return aAllDone ? 1 : -1;
+    }
+
     const aTime = new Date(a[0].createdAt).getTime();
     const bTime = new Date(b[0].createdAt).getTime();
     return aTime - bTime;
